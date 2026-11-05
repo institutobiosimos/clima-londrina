@@ -564,3 +564,7 @@ table.ind tr.pos td { color: #1d6b3e; font-weight: 600; }
 .zarc-leg i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 .zarc-hist { width: 100%; font-size: .78rem; border-collapse: collapse; }
 .zarc-hist th, .zarc-hist td { padding: 2px 4px; border-bottom: 1px solid #eee; text-align: center; }
+.vento-canvas { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.vento-ctrl { margin: 8px 0 4px; display: flex; flex-direction: column; gap: 6px; }
+.vento-ctrl .segmented { margin: 0; }
+#modoVento[hidden] { display: none !important; }

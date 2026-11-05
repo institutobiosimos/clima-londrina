@@ -1282,6 +1282,69 @@ async function renderRural() {
         setTimeout(() => map.fitBounds(boundsDe({ type: 'FeatureCollection', features: [f] }), { padding: 80, duration: 900, maxZoom: 13.5 }), 300);
     }));
 }
+// ---------- animação de partículas do vento (ilustrativa) ----------
+const ventoAnim = { ativo: false, grade: null, dir: 90, kmh: 15, fonte: '', parts: [], raf: 0, canvas: null };
+const NOME_DIR = ['norte', 'nordeste', 'leste', 'sudeste', 'sul', 'sudoeste', 'oeste', 'noroeste'];
+const dirNome = g => NOME_DIR[Math.round(((g % 360) + 360) % 360 / 45) % 8];
+function vGrade(lon, lat) {
+    const g = ventoAnim.grade; if (!g) return -1;
+    const x = (lon - g.oeste) / (g.leste - g.oeste) * (g.colunas - 1), y = (g.norte - lat) / (g.norte - g.sul) * (g.linhas - 1);
+    if (x < 0 || y < 0 || x > g.colunas - 1 || y > g.linhas - 1) return -1;
+    const v = g.valores[Math.round(y) * g.colunas + Math.round(x)];
+    return v < 0 ? -1 : v / 99;
+}
+function novaParticula() {
+    const g = ventoAnim.grade;
+    for (let k = 0; k < 30; k++) {
+        const lon = g.oeste + Math.random() * (g.leste - g.oeste), lat = g.sul + Math.random() * (g.norte - g.sul);
+        if (vGrade(lon, lat) >= 0) return { lon, lat, idade: Math.floor(Math.random() * 80) };
+    }
+    return { lon: (g.oeste + g.leste) / 2, lat: (g.sul + g.norte) / 2, idade: 0 };
+}
+function passoVento() {
+    const cv = ventoAnim.canvas, ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+    ctx.globalCompositeOperation = 'destination-in'; ctx.fillStyle = 'rgba(0,0,0,0.94)'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.globalCompositeOperation = 'source-over'; ctx.lineWidth = 1.7 * dpr;
+    const th = (ventoAnim.dir + 180) * Math.PI / 180;               // para onde o vento vai
+    const ux = Math.sin(th), uy = Math.cos(th), escala = Math.pow(2, 12 - map.getZoom());
+    const base = 0.00011 * Math.max(0.5, Math.min(3, ventoAnim.kmh / 12)) * escala;
+    const kx = 1 / Math.cos(-23.3 * Math.PI / 180), d = 0.002;
+    for (const p of ventoAnim.parts) {
+        const v = vGrade(p.lon, p.lat);
+        if (v < 0 || p.idade++ > 90) { Object.assign(p, novaParticula()); p.idade = 0; continue; }
+        // desvia para onde o ar circula melhor (gradiente do potencial), só na componente lateral ao vento
+        const gx = (vGrade(p.lon + d * kx, p.lat) - vGrade(p.lon - d * kx, p.lat)), gy = (vGrade(p.lon, p.lat + d) - vGrade(p.lon, p.lat - d));
+        const lat_ = (-uy * gx + ux * gy) * 0.6;
+        const vel = base * (0.2 + 1.2 * v * v);
+        const a = map.project([p.lon, p.lat]);
+        p.lon += (ux * vel + (-uy) * lat_ * base) * kx; p.lat += uy * vel + ux * lat_ * base;
+        const b = map.project([p.lon, p.lat]);
+        ctx.strokeStyle = v > 0.6 ? 'rgba(8,48,107,0.95)' : v > 0.35 ? 'rgba(20,40,70,0.75)' : 'rgba(60,20,20,0.5)';
+        ctx.beginPath(); ctx.moveTo(a.x * dpr, a.y * dpr); ctx.lineTo(b.x * dpr, b.y * dpr); ctx.stroke();
+    }
+    ventoAnim.raf = requestAnimationFrame(passoVento);
+}
+function ajustarCanvasVento() {
+    const cv = ventoAnim.canvas, r = document.getElementById('map').getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = r.width * dpr; cv.height = r.height * dpr; cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px';
+}
+async function ligarAnimacaoVento(on, cfg) {
+    ventoAnim.ativo = on;
+    if (!on) { cancelAnimationFrame(ventoAnim.raf); if (ventoAnim.canvas) ventoAnim.canvas.remove(); ventoAnim.canvas = null; return; }
+    if (!ventoAnim.grade) ventoAnim.grade = await (await fetch(cfg.grade, { cache: 'no-cache' })).json();
+    const cv = document.createElement('canvas'); cv.className = 'vento-canvas'; document.getElementById('map').appendChild(cv); ventoAnim.canvas = cv;
+    ajustarCanvasVento();
+    ventoAnim.parts = Array.from({ length: window.innerWidth < 700 ? 900 : 2200 }, novaParticula);
+    const limpar = () => { if (ventoAnim.canvas) ventoAnim.canvas.getContext('2d').clearRect(0, 0, cv.width, cv.height); };
+    if (!ventoAnim.ouvintes) { map.on('movestart', limpar); map.on('resize', () => ventoAnim.canvas && ajustarCanvasVento()); ventoAnim.ouvintes = true; }
+    passoVento();
+}
+async function ventoAgora() {
+    try {
+        const r = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=-23.31&longitude=-51.16&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=America%2FSao_Paulo')).json();
+        return { dir: r.current.wind_direction_10m, kmh: r.current.wind_speed_10m, raj: r.current.wind_gusts_10m, hora: r.current.time };
+    } catch { return null; }
+}
 async function renderVento() {
     const card = document.getElementById('cardVento'), cfg = dadosGerais.painel_vento;
     if (!card || !cfg) return;
@@ -1293,9 +1356,33 @@ async function renderVento() {
     card.hidden = false;
     card.innerHTML = `<h2>${esc(cfg.titulo)}</h2>
         <p class="hint">Em Londrina o vento vem principalmente de <b>${r.direcoes.map(d => `${NOME[d.setor]} (${fmt(d.frequencia_pct, 0)}% dos dias)`).join(', ')}</b> (${esc(r.periodo_rosa)}). ${esc(cfg.texto)}</p>
+        <div class="vento-ctrl"><button type="button" class="btn btn-solid" id="btnAnimVento">▶ Animar o vento</button>
+        <div class="segmented" id="modoVento"><button type="button" data-m="agora" class="active">Vento agora</button><button type="button" data-m="pred">Predominante</button></div>
+        <p class="hint" id="ventoInfo"></p></div>
         <h3>Canais de ventilação dentro da cidade</h3><ol class="ranking">${canais.map((f, i) => item(f, i, 'c', '#1565c0')).join('')}</ol>
         <h3>Onde o ar fica mais parado</h3><ol class="ranking">${bars.map((f, i) => item(f, i, 'b', '#c62828')).join('')}</ol>
         <p class="hint">${esc(cfg.aviso)}</p>`;
+    const pred = { dir: { N: 0, NE: 45, L: 90, SE: 135, S: 180, SO: 225, O: 270, NO: 315 }[r.direcoes[0].setor], kmh: 12 };
+    let agora = null, modo = 'agora';
+    const info = card.querySelector('#ventoInfo'), btA = card.querySelector('#btnAnimVento');
+    const aplicar = () => {
+        const w = modo === 'agora' && agora ? agora : pred;
+        ventoAnim.dir = w.dir; ventoAnim.kmh = w.kmh;
+        info.innerHTML = modo === 'agora' && agora
+            ? `Agora (${esc(agora.hora.slice(11, 16))}): vento de <b>${dirNome(agora.dir)}</b>, ${fmt(agora.kmh, 0)} km/h, rajadas de ${fmt(agora.raj, 0)} km/h. Atualiza a cada 15 min.`
+            : `Vento predominante: de <b>${dirNome(pred.dir)}</b> (${fmt(r.direcoes[0].frequencia_pct, 0)}% dos dias).`;
+        info.innerHTML += ' Partículas mais rápidas e claras = ar circulando melhor. Animação ilustrativa sobre o modelo de ventilação.';
+    };
+    ventoAgora().then(a => { agora = a; if (!a) { modo = 'pred'; card.querySelector('#modoVento').hidden = true; } aplicar(); });
+    setInterval(async () => { const a = await ventoAgora(); if (a) { agora = a; aplicar(); } }, 15 * 60 * 1000);
+    card.querySelectorAll('#modoVento button').forEach(b2 => b2.addEventListener('click', () => {
+        modo = b2.dataset.m; card.querySelectorAll('#modoVento button').forEach(x => x.classList.toggle('active', x === b2)); aplicar();
+    }));
+    btA.addEventListener('click', async () => {
+        const on = !ventoAnim.ativo; btA.textContent = on ? '⏸ Parar animação' : '▶ Animar o vento';
+        if (on) { const row = document.querySelector('.camada-row[data-id="vento-ventilacao"]'); if (row && !opcionaisAtivas.has('vento-ventilacao')) row.click(); }
+        await ligarAnimacaoVento(on, cfg);
+    });
     card.querySelectorAll('.rk').forEach(bt => bt.addEventListener('click', () => {
         const f = (bt.dataset.g === 'c' ? canais : bars)[+bt.dataset.i];
         for (const id of cfg.camadas) { const row = document.querySelector(`.camada-row[data-id="${id}"]`); if (row && !opcionaisAtivas.has(id)) row.click(); }

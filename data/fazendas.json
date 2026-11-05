@@ -628,6 +628,7 @@
    "vento-barreiras",
    "vento-direcoes"
   ],
-  "aviso": "Modelo indicativo: combina a direção dos ventos, a rugosidade da superfície (uso do solo e altura média das edificações em quadras de 100 m) e o relevo. Não substitui simulação de escoamento (CFD) nem medições locais; serve para apontar onde preservar e onde abrir caminhos para o vento."
+  "aviso": "Modelo indicativo: combina a direção dos ventos, a rugosidade da superfície (uso do solo e altura média das edificações em quadras de 100 m) e o relevo. Não substitui simulação de escoamento (CFD) nem medições locais; serve para apontar onde preservar e onde abrir caminhos para o vento.",
+  "grade": "data/vento/grade.json"
  }
 }
