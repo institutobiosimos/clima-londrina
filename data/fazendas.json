@@ -149,6 +149,88 @@
    "fonte": "Landsat 8/9 (USGS/NASA) + bairros oficiais (IPPUL)"
   },
   {
+   "id": "vento-ventilacao",
+   "secao": "Ventos e ventilação",
+   "nome": "Potencial de ventilação (modelo)",
+   "tipo": "imagem",
+   "arquivo": "data/vento/ventilacao.json",
+   "opacidade": 0.75,
+   "legenda_itens": [
+    {
+     "rotulo": "ar circula bem",
+     "cor": "#2166ac"
+    },
+    {
+     "rotulo": "intermediário",
+     "cor": "#fdf5c8"
+    },
+    {
+     "rotulo": "ar estagnado",
+     "cor": "#b2182b"
+    }
+   ],
+   "fonte": "Modelo Biosimos: rosa dos ventos ERA5 + rugosidade (MapBiomas 2023, altura das edificações GHSL/JRC 2018) + relevo Copernicus DEM"
+  },
+  {
+   "id": "vento-canais",
+   "secao": "Ventos e ventilação",
+   "nome": "Canais de ventilação e entradas de ar fresco",
+   "arquivo": "data/vento/corredores.geojson",
+   "cor": "#1565c0",
+   "preenchimento": 0.25,
+   "largura": 2,
+   "clicavel": true,
+   "campos": [
+    "Tipo",
+    "Microbacia",
+    "Bairros",
+    "Potencial de ventilação (0–100)",
+    "Área (ha)",
+    "Área urbanizada (%)",
+    "Altura média das edificações (m)"
+   ],
+   "fonte": "Modelo indicativo – Instituto Biosimos",
+   "cor_por": "Tipo",
+   "cores": {
+    "Canal de ventilação urbano": "#1565c0",
+    "Entrada de ar fresco (área aberta dentro do perímetro)": "#4fc3f7"
+   }
+  },
+  {
+   "id": "vento-barreiras",
+   "secao": "Ventos e ventilação",
+   "nome": "Áreas de ar estagnado (barreiras à ventilação)",
+   "arquivo": "data/vento/barreiras.geojson",
+   "cor": "#c62828",
+   "preenchimento": 0.25,
+   "largura": 2,
+   "clicavel": true,
+   "campos": [
+    "Tipo",
+    "Bairros",
+    "Microbacia",
+    "Potencial de ventilação (0–100)",
+    "Área (ha)",
+    "Altura média das edificações (m)"
+   ],
+   "fonte": "Modelo indicativo – Instituto Biosimos"
+  },
+  {
+   "id": "vento-direcoes",
+   "secao": "Ventos e ventilação",
+   "nome": "Direção dos ventos predominantes",
+   "arquivo": "data/vento/direcoes.geojson",
+   "geometria": "linha",
+   "cor": "#0d47a1",
+   "largura": 4,
+   "clicavel": true,
+   "campos": [
+    "Direção",
+    "Frequência (% dos dias)"
+   ],
+   "fonte": "ERA5 (Copernicus/ECMWF) via Open-Meteo, últimos 10 anos"
+  },
+  {
    "id": "vegetacao",
    "secao": "Vegetação e sombra",
    "nome": "Cobertura vegetal (NDVI)",
@@ -502,6 +584,10 @@
    {
     "nome": "MAPA – Zoneamento Agrícola de Risco Climático (ZARC), tábuas de risco",
     "link": "https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico"
+   },
+   {
+    "nome": "JRC/Comissão Europeia – GHSL, altura das edificações (GHS-BUILT-H 2018)",
+    "link": "https://human-settlement.emergency.copernicus.eu/"
    }
   ],
   "contato": "contato@institutobiosimos.org.br",
@@ -529,5 +615,19 @@
   "titulo": "Calendário de plantio – ZARC",
   "texto": "Janelas de plantio com menor risco climático em Londrina, segundo o Zoneamento Agrícola de Risco Climático do Ministério da Agricultura (base do Proagro e do seguro rural).",
   "arquivo": "data/zarc/zarc_londrina.json"
+ },
+ "painel_vento": {
+  "titulo": "Ventos: por onde a cidade respira",
+  "texto": "Os canais de ventilação são faixas por onde esse vento entra e atravessa a cidade com pouco obstáculo – fundos de vale, lagos, parques e áreas abertas. Atrás de áreas densas e altas, o ar fica mais parado e o calor se acumula. Clique para ver no mapa.",
+  "corredores": "data/vento/corredores.geojson",
+  "barreiras": "data/vento/barreiras.geojson",
+  "resumo": "data/vento/resumo.json",
+  "camadas": [
+   "vento-ventilacao",
+   "vento-canais",
+   "vento-barreiras",
+   "vento-direcoes"
+  ],
+  "aviso": "Modelo indicativo: combina a direção dos ventos, a rugosidade da superfície (uso do solo e altura média das edificações em quadras de 100 m) e o relevo. Não substitui simulação de escoamento (CFD) nem medições locais; serve para apontar onde preservar e onde abrir caminhos para o vento."
  }
 }

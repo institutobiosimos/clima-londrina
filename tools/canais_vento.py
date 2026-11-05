@@ -132,7 +132,8 @@ def rio_proximo(g):
     return melhor.replace('Microbacia do ', '').replace('Microbacia da ', '') if melhor else None
 bairros = [(f['properties'].get('nome') or '', shape(f['geometry']).buffer(0)) for f in json.load(open('data/base/bairros.geojson'))['features']]
 def bairros_de(g):
-    return [n for n, b in bairros if n and b.intersects(g) and b.intersection(g).area > 0.00002][:6]
+    ov = sorted(((n, b.intersection(g).area) for n, b in bairros if n and b.intersects(g)), key=lambda x: -x[1])
+    return [n for n, a in ov if a > 0.00002][:6]
 ha = px * py / 1e4
 def vetoriza(mask, minimo_ha, tipo):
     mask = ndimage.binary_opening(mask, iterations=1)
@@ -162,7 +163,7 @@ for f in cor:
     if f['properties']['Área urbanizada (%)'] < 15: f['properties']['Tipo'] = 'Entrada de ar fresco (área aberta dentro do perímetro)'
     else: f['properties']['Tipo'] = 'Canal de ventilação urbano'
 cor.sort(key=lambda f: (f['properties']['Tipo'] != 'Canal de ventilação urbano', -f['properties']['Área (ha)']))
-for i, f in enumerate(cor): f['properties'] = {'Nome': ('Canal' if 'Canal' in f['properties']['Tipo'] else 'Entrada de ar') + (f" – {f['properties']['Microbacia']}" if 'Microbacia' in f['properties'] else f' {i + 1}'), **f['properties']}
+for i, f in enumerate(cor): f['properties'] = {'Nome': ('Canal' if 'Canal' in f['properties']['Tipo'] else 'Entrada de ar') + (f" – {f['properties']['Microbacia']}" if 'Microbacia' in f['properties'] else f' {i + 1}') + (f" ({f['properties']['Bairros'].split(', ')[0]})" if 'Canal' in f['properties']['Tipo'] and 'Bairros' in f['properties'] else ''), **f['properties']}
 for i, f in enumerate(bar): f['properties'] = {'Nome': 'Ar estagnado' + (f" – {f['properties']['Bairros'].split(', ')[0]}" if 'Bairros' in f['properties'] else ''), **f['properties']}
 json.dump({'type': 'FeatureCollection', 'features': cor}, open('data/vento/corredores.geojson', 'w'), ensure_ascii=False, separators=(',', ':'))
 json.dump({'type': 'FeatureCollection', 'features': bar}, open('data/vento/barreiras.geojson', 'w'), ensure_ascii=False, separators=(',', ':'))

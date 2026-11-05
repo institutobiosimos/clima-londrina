@@ -1282,6 +1282,26 @@ async function renderRural() {
         setTimeout(() => map.fitBounds(boundsDe({ type: 'FeatureCollection', features: [f] }), { padding: 80, duration: 900, maxZoom: 13.5 }), 300);
     }));
 }
+async function renderVento() {
+    const card = document.getElementById('cardVento'), cfg = dadosGerais.painel_vento;
+    if (!card || !cfg) return;
+    let c, b, r; try { [c, b, r] = await Promise.all([cfg.corredores, cfg.barreiras, cfg.resumo].map(async u => (await fetch(u, { cache: 'no-cache' })).json())); } catch { return; }
+    const NOME = { N: 'norte', NE: 'nordeste', L: 'leste', SE: 'sudeste', S: 'sul', SO: 'sudoeste', O: 'oeste', NO: 'noroeste' };
+    const canais = c.features.filter(f => f.properties.Tipo.startsWith('Canal')).slice(0, 8), bars = b.features.slice(0, 6);
+    const item = (f, i, grupo, cor) => `<li><button type="button" class="rk" data-g="${grupo}" data-i="${i}"><span class="rk-n">${esc(f.properties.Nome)}</span>
+        <span class="rk-v" style="color:${cor}">${esc(f.properties.Bairros ? f.properties.Bairros.split(', ').slice(0, 2).join(', ') : f.properties['Área (ha)'] + ' ha')}</span></button></li>`;
+    card.hidden = false;
+    card.innerHTML = `<h2>${esc(cfg.titulo)}</h2>
+        <p class="hint">Em Londrina o vento vem principalmente de <b>${r.direcoes.map(d => `${NOME[d.setor]} (${fmt(d.frequencia_pct, 0)}% dos dias)`).join(', ')}</b> (${esc(r.periodo_rosa)}). ${esc(cfg.texto)}</p>
+        <h3>Canais de ventilação dentro da cidade</h3><ol class="ranking">${canais.map((f, i) => item(f, i, 'c', '#1565c0')).join('')}</ol>
+        <h3>Onde o ar fica mais parado</h3><ol class="ranking">${bars.map((f, i) => item(f, i, 'b', '#c62828')).join('')}</ol>
+        <p class="hint">${esc(cfg.aviso)}</p>`;
+    card.querySelectorAll('.rk').forEach(bt => bt.addEventListener('click', () => {
+        const f = (bt.dataset.g === 'c' ? canais : bars)[+bt.dataset.i];
+        for (const id of cfg.camadas) { const row = document.querySelector(`.camada-row[data-id="${id}"]`); if (row && !opcionaisAtivas.has(id)) row.click(); }
+        setTimeout(() => map.fitBounds(boundsDe({ type: 'FeatureCollection', features: [f] }), { padding: 70, duration: 900, maxZoom: 14 }), 300);
+    }));
+}
 async function renderZarc() {
     const card = document.getElementById('cardZarc'), cfg = dadosGerais.painel_zarc;
     if (!card || !cfg) return;
@@ -1380,7 +1400,7 @@ async function iniciar() {
     renderTermos();
     renderLicencas();
     renderClima();
-    renderRanking(); renderRural(); renderZarc();
+    renderRanking(); renderRural(); renderZarc(); renderVento();
     renderImpactos();
     if (fazendas.length || dados.busca_camada) document.getElementById('cardLista')?.removeAttribute('hidden');
     renderModosCor();

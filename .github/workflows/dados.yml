@@ -19,6 +19,7 @@ jobs:
           python3 tools/clima_historico.py > data/_diag/clima.txt 2>&1 || true
           python3 tools/calor_vegetacao.py > data/_diag/calor.txt 2>&1 || true
           python3 tools/alagamento_hand.py > data/_diag/alagamento.txt 2>&1 || true
+          python3 tools/canais_vento.py > data/_diag/vento.txt 2>&1 || true
           python3 tools/rural_microbacias.py > data/_diag/rural.txt 2>&1 || true
           python3 tools/zarc.py > data/_diag/zarc.txt 2>&1 || true
           python3 tools/atualizar_resumo.py > data/_diag/resumo.txt 2>&1 || true
