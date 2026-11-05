@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
-      - run: pip install -q "numpy<2" rasterio shapely pyproj pillow pystac-client planetary-computer pysheds
+      - run: pip install -q "numpy<2" rasterio shapely pyproj pillow pystac-client planetary-computer pysheds scipy
       - run: |
           mkdir -p data/_diag
           python3 tools/geocodificar_impactos.py > data/_diag/impactos.txt 2>&1 || true

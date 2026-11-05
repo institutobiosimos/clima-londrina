@@ -1,0 +1,19 @@
+name: Canais de ventilação
+on: { workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  vento:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -q "numpy<2" rasterio shapely pyproj pillow pystac-client planetary-computer pysheds scipy
+      - run: |
+          mkdir -p data/_diag
+          python3 tools/alagamento_hand.py > data/_diag/alagamento.txt 2>&1 || true
+          python3 tools/canais_vento.py > data/_diag/vento.txt 2>&1 || true
+      - run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/vento data/_diag; git commit -q -m "Canais de ventilação" || true; git pull -q --rebase origin main || true; git push

@@ -1,0 +1,21 @@
+{
+ "direcoes": [
+  {
+   "setor": "L",
+   "frequencia_pct": 37.1
+  },
+  {
+   "setor": "SE",
+   "frequencia_pct": 20.7
+  },
+  {
+   "setor": "NE",
+   "frequencia_pct": 10.3
+  }
+ ],
+ "periodo_rosa": "2016–2025",
+ "canais": 8,
+ "area_canais_ha": 13170,
+ "barreiras": 20,
+ "altura_edificacoes": false
+}
