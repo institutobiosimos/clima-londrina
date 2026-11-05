@@ -124,6 +124,13 @@ img = np.zeros((H, W, 4), 'uint8'); img[..., :3] = rampa(np.clip(q, 0, 1)); img[
 Image.fromarray(img, 'RGBA').save('data/vento/ventilacao.png', optimize=True)
 w_, s_, e_, n_ = rasterio.transform.array_bounds(H, W, tr)
 json.dump({'imagem': 'data/vento/ventilacao.png', 'cantos': [[w_, n_], [e_, n_], [e_, s_], [w_, s_]]}, open('data/vento/ventilacao.json', 'w'))
+# grade reduzida (≈ 90 m) para a animação de partículas no navegador: 0–99 dentro da área, -1 fora
+f_ = 3; Hs, Ws = H // f_, W // f_
+qq = np.clip(q, 0, 1)[:Hs * f_, :Ws * f_].reshape(Hs, f_, Ws, f_).mean(axis=(1, 3))
+dd = dentro[:Hs * f_, :Ws * f_].reshape(Hs, f_, Ws, f_).mean(axis=(1, 3)) > 0.5
+g = np.where(dd, np.round(qq * 99), -1).astype(int)
+json.dump({'oeste': w_, 'leste': w_ + Ws * f_ * tr.a, 'norte': n_, 'sul': n_ + Hs * f_ * tr.e, 'linhas': Hs, 'colunas': Ws,
+           'valores': g.flatten().tolist()}, open('data/vento/grade.json', 'w'), separators=(',', ':'))
 
 # ---------- vetorização dos corredores e barreiras ----------
 mbs = [(f['properties'].get('nome') or '', shape(f['geometry']).buffer(0)) for f in json.load(open('data/base/microbacias.geojson'))['features']]
