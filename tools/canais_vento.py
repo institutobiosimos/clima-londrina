@@ -157,28 +157,33 @@ def vetoriza(mask, minimo_ha, tipo):
     feats.sort(key=lambda f: -f['properties']['Área (ha)'])
     return feats
 cor = vetoriza((V >= p70) & dentro_urb, 10, 'Canal de ventilação')
-bar = vetoriza((V <= p15) & dentro_urb & (urb > 0.5), 15, 'Barreira à ventilação')
-for i, f in enumerate(cor): f['properties'] = {'Nome': f"Canal {i + 1}" + (f" – {f['properties']['Microbacia']}" if 'Microbacia' in f['properties'] else ''), **f['properties']}
-for i, f in enumerate(bar): f['properties'] = {'Nome': f"Barreira {i + 1}", **f['properties']}
+bar = vetoriza((V <= p15) & dentro_urb & (urb > 0.5), 15, 'Área de ar estagnado (barreira à ventilação)')
+for f in cor:
+    if f['properties']['Área urbanizada (%)'] < 15: f['properties']['Tipo'] = 'Entrada de ar fresco (área aberta dentro do perímetro)'
+    else: f['properties']['Tipo'] = 'Canal de ventilação urbano'
+cor.sort(key=lambda f: (f['properties']['Tipo'] != 'Canal de ventilação urbano', -f['properties']['Área (ha)']))
+for i, f in enumerate(cor): f['properties'] = {'Nome': ('Canal' if 'Canal' in f['properties']['Tipo'] else 'Entrada de ar') + (f" – {f['properties']['Microbacia']}" if 'Microbacia' in f['properties'] else f' {i + 1}'), **f['properties']}
+for i, f in enumerate(bar): f['properties'] = {'Nome': 'Ar estagnado' + (f" – {f['properties']['Bairros'].split(', ')[0]}" if 'Bairros' in f['properties'] else ''), **f['properties']}
 json.dump({'type': 'FeatureCollection', 'features': cor}, open('data/vento/corredores.geojson', 'w'), ensure_ascii=False, separators=(',', ':'))
 json.dump({'type': 'FeatureCollection', 'features': bar}, open('data/vento/barreiras.geojson', 'w'), ensure_ascii=False, separators=(',', ':'))
 
-# setas de direção predominante sobre a cidade (linhas, a ponta indica para onde o vento vai)
+# setas de direção predominante: entram na cidade pelo lado de onde o vento vem; comprimento proporcional à frequência
 c = sede.centroid; setas = []
-for s, ang, w in DIRS:
-    th = math.radians(ang + 180)  # para onde vai
-    for k, (ox, oy) in enumerate([(-0.06, 0.03), (0, 0), (0.06, -0.03), (-0.03, -0.05), (0.03, 0.05)]):
-        x0, y0 = c.x + ox - 0.025 * math.sin(th), c.y + oy - 0.025 * math.cos(th)
-        x1, y1 = c.x + ox + 0.025 * math.sin(th), c.y + oy + 0.025 * math.cos(th)
-        # ponta
-        a1, a2 = th + math.radians(155), th - math.radians(155)
-        linha = [[x0, y0], [x1, y1], [x1 + 0.008 * math.sin(a1), y1 + 0.008 * math.cos(a1)], [x1, y1], [x1 + 0.008 * math.sin(a2), y1 + 0.008 * math.cos(a2)]]
-        setas.append({'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': linha},
-                      'properties': {'Direção': {'N': 'Norte', 'NE': 'Nordeste', 'L': 'Leste', 'SE': 'Sudeste', 'S': 'Sul', 'SO': 'Sudoeste', 'O': 'Oeste', 'NO': 'Noroeste'}[s],
-                                     'Frequência (% dos dias)': round(freq[s], 1), 'peso': round(w, 2)}})
+NOME = {'N': 'Norte', 'NE': 'Nordeste', 'L': 'Leste', 'SE': 'Sudeste', 'S': 'Sul', 'SO': 'Sudoeste', 'O': 'Oeste', 'NO': 'Noroeste'}
+kx = 1 / math.cos(math.radians(c.y))
+for s_, ang, w in DIRS:
+    th = math.radians(ang)                       # de onde vem
+    ini = (c.x + 0.115 * kx * math.sin(th), c.y + 0.115 * math.cos(th))
+    comp = 0.03 + 0.06 * w / DIRS[0][2]
+    fim = (ini[0] - comp * kx * math.sin(th), ini[1] - comp * math.cos(th))
+    vai = th + math.pi
+    p1 = (fim[0] + 0.009 * kx * math.sin(vai + math.radians(150)), fim[1] + 0.009 * math.cos(vai + math.radians(150)))
+    p2 = (fim[0] + 0.009 * kx * math.sin(vai - math.radians(150)), fim[1] + 0.009 * math.cos(vai - math.radians(150)))
+    setas.append({'type': 'Feature', 'geometry': {'type': 'MultiLineString', 'coordinates': [[list(ini), list(fim)], [list(p1), list(fim), list(p2)]]},
+                  'properties': {'Direção': f'Vento de {NOME[s_]}', 'Frequência (% dos dias)': round(freq[s_], 1)}})
 json.dump({'type': 'FeatureCollection', 'features': setas}, open('data/vento/direcoes.geojson', 'w'), ensure_ascii=False)
 res = {'direcoes': [{'setor': s, 'frequencia_pct': round(freq[s], 1)} for s, _, _ in DIRS], 'periodo_rosa': rosa.get('periodo'),
-       'canais': len(cor), 'area_canais_ha': sum(f['properties']['Área (ha)'] for f in cor), 'barreiras': len(bar),
+       'canais_urbanos': sum(1 for f in cor if 'Canal' in f['properties']['Tipo']), 'entradas_ar': sum(1 for f in cor if 'Entrada' in f['properties']['Tipo']), 'area_canais_ha': sum(f['properties']['Área (ha)'] for f in cor), 'barreiras': len(bar),
        'altura_edificacoes': bool(tem_alt)}
 json.dump(res, open('data/vento/resumo.json', 'w'), ensure_ascii=False, indent=1)
 print(res); print([f['properties'] for f in cor[:8]]); print([f['properties'] for f in bar[:5]])
