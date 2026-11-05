@@ -14,7 +14,8 @@
   }
  ],
  "periodo_rosa": "2016–2025",
- "canais": 21,
+ "canais_urbanos": 4,
+ "entradas_ar": 17,
  "area_canais_ha": 6267,
  "barreiras": 14,
  "altura_edificacoes": true
