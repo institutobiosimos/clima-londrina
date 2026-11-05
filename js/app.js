@@ -1,0 +1,1441 @@
+// =====================================================================
+// Mapa interativo de cliente – CS Consultoria Ambiental
+// Dados: data/fazendas.json (fazendas, CAR, área, adequações e status)
+//        data/<fazenda>.geojson (perímetros)
+// Para atualizar o andamento, basta mudar o "status" de cada adequação
+// em data/fazendas.json: "Pendente", "Em andamento" ou "Concluída".
+// =====================================================================
+
+mapboxgl.accessToken = 'pk.eyJ1IjoiY3NhbWJpZW50YWwiLCJhIjoiY205MWk4eHU4MDE3czJxcHNqamR4emd5aiJ9.e8K-ENRHJwXTz_FGGwYExg';
+
+const STATUS = {
+    'Concluída':    { cor: '#2e9e5b', classe: 'ok' },
+    'Em andamento': { cor: '#e0a100', classe: 'andamento' },
+    'Pendente':     { cor: '#9aa0a6', classe: 'pendente' }
+};
+const ORDEM_STATUS = ['Concluída', 'Em andamento', 'Pendente'];
+
+// Paleta das fazendas (cores distintas e legíveis sobre o satélite)
+const PALETA = ['#ff6b4a', '#4fc3f7', '#ba68c8', '#ffd54f', '#81c784', '#f06292', '#4db6ac', '#ffb74d'];
+
+let fazendas = [];
+let geojsons = {};
+let camadas = [];       // camadas extras (pivôs, represas...)
+const camadasData = {};
+let selecionada = null;
+let mostrarPreenchimento = true;
+const ocultas = new Set(); // camadas base desligadas pelo usuário
+const ligada = (id) => !ocultas.has(id);
+
+// Imagem de satélite mais recente: Esri World Imagery (Vantor/Maxar, ago/2025, 0,34 m na região)
+const ESTILO_ESRI = {
+    version: 8,
+    glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
+    sources: {
+        esri: {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            maxzoom: 19,
+            attribution: 'Imagens © Esri, Vantor, Maxar, Earthstar Geographics'
+        }
+    },
+    layers: [{ id: 'esri', type: 'raster', source: 'esri' }]
+};
+const ESTILOS = {
+    esri: ESTILO_ESRI,
+    mapbox: 'mapbox://styles/mapbox/satellite-streets-v12',
+    mapa: 'mapbox://styles/mapbox/outdoors-v12'
+};
+
+const map = new mapboxgl.Map({
+    container: 'map',
+    style: ESTILO_ESRI,
+    center: [-49.955, -21.75],
+    zoom: 11,
+    preserveDrawingBuffer: true
+});
+map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+map.addControl(new mapboxgl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+
+// ---------- utilidades ----------
+const fmt = (n, casas = 0) => Number(n).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Rótulo no singular/plural: "1 concluída", "2 concluídas"
+function rotulo(status, n) {
+    const plural = { 'Concluída': 'concluídas', 'Em andamento': 'em andamento', 'Pendente': 'pendentes' };
+    return n === 1 ? status.toLowerCase() : plural[status];
+}
+
+function contarStatus(lista) {
+    const c = { 'Concluída': 0, 'Em andamento': 0, 'Pendente': 0 };
+    lista.forEach(a => { c[a.status in c ? a.status : 'Pendente']++; });
+    return c;
+}
+
+// Barra empilhada: concluída | em andamento | pendente
+function barraProgresso(cont, total) {
+    if (!total) return '';
+    return ORDEM_STATUS.map(s => {
+        const pct = cont[s] / total * 100;
+        return pct > 0 ? `<span style="width:${pct}%;background:${STATUS[s].cor}" title="${s}: ${cont[s]}"></span>` : '';
+    }).join('');
+}
+
+function boundsDe(geojson) {
+    const b = turf.bbox(geojson);
+    return [[b[0], b[1]], [b[2], b[3]]];
+}
+
+// ---------- balões (popups) sempre dentro da tela ----------
+(function () {
+    const addTo = mapboxgl.Popup.prototype.addTo;
+    mapboxgl.Popup.prototype.addTo = function (m) {
+        const r = addTo.call(this, m);
+        requestAnimationFrame(() => setTimeout(() => enquadrarPopup(this, m), 30));
+        return r;
+    };
+})();
+function enquadrarPopup(p, m) {
+    const el = p.getElement && p.getElement(); if (!el) return;
+    const a = el.getBoundingClientRect(), b = m.getContainer().getBoundingClientRect(), pad = 12;
+    let dx = 0, dy = 0;
+    if (a.height > b.height - 2 * pad || a.top < b.top + pad) dy = a.top - b.top - pad;
+    else if (a.bottom > b.bottom - pad) dy = a.bottom - b.bottom + pad;
+    if (a.left < b.left + pad) dx = a.left - b.left - pad;
+    else if (a.right > b.right - pad) dx = a.right - b.right + pad;
+    if (dx || dy) m.panBy([dx, dy], { duration: 350 });
+}
+
+// ---------- quadro "Sobre os dados e termos de uso" ----------
+function renderTermos() {
+    const t = dadosGerais.termos, el = document.getElementById('cardTermos');
+    if (!t || !el) return;
+    el.hidden = false;
+    el.innerHTML = `<h2>${esc(t.titulo || 'Sobre os dados e termos de uso')}</h2>
+        ${t.texto ? `<p class="termos-texto">${esc(t.texto)}</p>` : ''}
+        ${(t.avisos || []).length ? `<ul class="termos-lista">${t.avisos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+        ${(t.fontes || []).length ? `<h3>Fontes</h3><ul class="termos-fontes">${t.fontes.map(f => `<li>${f.link ? `<a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.nome)}</a>` : esc(f.nome)}${f.detalhe ? ` – ${esc(f.detalhe)}` : ''}</li>`).join('')}</ul>` : ''}
+        ${t.contato ? `<p class="termos-contato">Correções, dúvidas ou pedidos de retirada de informação: <a href="mailto:${esc(t.contato)}">${esc(t.contato)}</a></p>` : ''}
+        ${t.site ? `<a class="btn btn-externo" href="${esc(t.site.url)}" target="_blank" rel="noopener">${esc(t.site.texto)} ↗</a>` : ''}`;
+    if (typeof prepararCartoes === 'function') prepararCartoes();
+}
+
+// ---------- quadro de licenças ambientais (lista pesquisável) ----------
+async function renderLicencas() {
+    const cfg = dadosGerais.licencas, el = document.getElementById('cardLicencas');
+    if (!cfg || !el) return;
+    let d;
+    try { d = await (await fetch(cfg.arquivo, { cache: 'no-cache' })).json(); } catch (e) { return; }
+    const L = d.licencas, cores = cfg.cores || {};
+    const vence = L.filter(x => x.situacao === 'Vence em até 6 meses').length, noMapa = L.filter(x => x.no_mapa).length;
+    const grupos = Object.entries(L.reduce((a, x) => (a[x.grupo] = (a[x.grupo] || 0) + 1, a), {})).sort((a, b) => b[1] - a[1]);
+    el.hidden = false;
+    el.innerHTML = `<h2>${esc(cfg.titulo || 'Licenças ambientais')}</h2>
+        <p class="hint">${esc(cfg.subtitulo || '')}</p>
+        <div class="kpis"><div class="kpi"><span class="kpi-value">${L.length.toLocaleString('pt-BR')}</span><span class="kpi-label">licenças vigentes</span></div>
+        <div class="kpi"><span class="kpi-value">${vence}</span><span class="kpi-label">vencem em até 6 meses</span></div>
+        <div class="kpi"><span class="kpi-value">${noMapa}</span><span class="kpi-label">localizadas no mapa</span></div></div>
+        <div class="lic-grupos">${grupos.map(([g, n]) => `<div class="lic-g"><span><i style="background:${cores[g] || '#888'}"></i>${esc(g)}</span><b>${n.toLocaleString('pt-BR')}</b>
+            <div class="lic-barra"><span style="width:${(100 * n / L.length).toFixed(1)}%;background:${cores[g] || '#888'}"></span></div></div>`).join('')}</div>
+        <input type="search" class="farm-search" id="licBusca" placeholder="Buscar por empresa, atividade ou protocolo">
+        <div class="lic-filtros"><button type="button" data-f="" class="ativo">Todas</button><button type="button" data-f="vence">Vencem em 6 meses</button><button type="button" data-f="mapa">No mapa</button></div>
+        <div id="licLista"></div>`;
+    let filtro = '';
+    const lista = el.querySelector('#licLista'), busca = el.querySelector('#licBusca');
+    const desenhar = () => {
+        const q = semAcento(busca.value.trim());
+        let r = L.filter(x => (!filtro || (filtro === 'vence' ? x.situacao === 'Vence em até 6 meses' : x.no_mapa)) &&
+            (!q || semAcento(`${x.nome} ${x.atividade} ${x.especifica} ${x.protocolo} ${x.modalidade}`).includes(q)));
+        const tot = r.length; r = r.slice(0, 40);
+        lista.innerHTML = `<p class="hint">${tot.toLocaleString('pt-BR')} resultado${tot === 1 ? '' : 's'}${tot > 40 ? ' – mostrando os 40 que vencem primeiro' : ''}</p>` +
+            r.map(x => `<div class="lic-item"><div class="lic-topo"><span class="lic-mod" style="background:${cores[x.grupo] || '#888'}">${esc(x.modalidade)}</span>
+                <strong>${esc(x.nome)}</strong></div>
+                <div class="lic-ativ">${esc(x.atividade)}${x.especifica && x.especifica !== x.atividade ? ` – ${esc(x.especifica)}` : ''}</div>
+                <div class="lic-meta">Doc. ${esc(x.documento)} · emitida ${esc(x.emissao)} · <span class="${x.situacao !== 'Vigente' ? 'lic-alerta' : ''}">válida até ${esc(x.validade)}</span> · prot. ${esc(x.protocolo)}
+                ${x.no_mapa ? `<button type="button" class="lic-mapa" data-p="${esc(x.protocolo)}">📍 ver no mapa</button>` : ''}</div></div>`).join('');
+        lista.querySelectorAll('.lic-mapa').forEach(b => b.addEventListener('click', () => mostrarLicenca(b.dataset.p)));
+    };
+    busca.addEventListener('input', desenhar);
+    el.querySelectorAll('.lic-filtros button').forEach(b => b.addEventListener('click', () => {
+        el.querySelectorAll('.lic-filtros button').forEach(o => o.classList.toggle('ativo', o === b)); filtro = b.dataset.f; desenhar();
+    }));
+    desenhar();
+    if (typeof prepararCartoes === 'function') prepararCartoes();
+}
+async function mostrarLicenca(protocolo) {
+    const o = (dadosGerais.camadas_opcionais || []).find(x => x.id === dadosGerais.licencas.camada);
+    if (!o) return;
+    if (!opcionaisAtivas.has(o.id)) document.querySelector(`.camada-row[data-id="${o.id}"]`)?.click();
+    for (let i = 0; i < 40 && !opcionaisData[o.id]; i++) await new Promise(r => setTimeout(r, 100));
+    const f = (opcionaisData[o.id]?.features || []).find(x => x.properties.Protocolo === protocolo);
+    if (!f) return;
+    map.flyTo({ center: f.geometry.coordinates, zoom: 15 });
+    const p = f.properties;
+    map.once('moveend', () => new mapboxgl.Popup({ maxWidth: '320px' }).setLngLat(f.geometry.coordinates)
+        .setHTML(`<div class="popup"><h3>${esc(p.nome)}</h3><dl class="popup-dl">${camposDe(o, p).map(k => `<dt>${esc(k)}</dt><dd>${esc(p[k])}</dd>`).join('')}</dl><p class="popup-hint">Fonte: ${esc(o.fonte || '')}</p></div>`).addTo(map));
+    if (window.matchMedia('(max-width: 800px)').matches) document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ---------- painel lateral ----------
+let dadosGerais = {};
+function renderResumo() {
+    const todas = fazendas.flatMap(f => f.adequacoes);
+    if (dadosGerais.resumo) {
+        document.querySelector('.kpis').innerHTML = dadosGerais.resumo.map(k =>
+            `<div class="kpi"><span class="kpi-value">${esc(k.valor)}</span><span class="kpi-label">${esc(k.rotulo)}</span></div>`).join('');
+    }
+    if (!todas.length) {
+        document.querySelectorAll('.progress-label, #progressTotal, #statusLegend').forEach(el => el.style.display = 'none');
+        return;
+    }
+    const cont = contarStatus(todas);
+    const areaTotal = fazendas.reduce((s, f) => s + f.area_ha, 0);
+    document.getElementById('kpiFazendas').textContent = fazendas.length;
+    document.getElementById('kpiArea').textContent = fmt(areaTotal);
+    document.getElementById('kpiAdequacoes').textContent = todas.length;
+    const pct = todas.length ? Math.round(cont['Concluída'] / todas.length * 100) : 0;
+    document.getElementById('kpiPct').textContent = `${pct}% concluído`;
+    document.getElementById('progressTotal').innerHTML = barraProgresso(cont, todas.length);
+    document.getElementById('statusLegend').innerHTML = ORDEM_STATUS.map(s =>
+        `<span class="chip"><i style="background:${STATUS[s].cor}"></i>${cont[s]} ${rotulo(s, cont[s])}</span>`).join('');
+}
+
+let filtroFazendas = '';
+let filtroGrupo = '';
+let filtroEtapa = '';
+// ---------- camadas opcionais (botão liga/desliga): bacias, microbacias ----------
+const opcionaisData = {};
+const opcionaisAtivas = new Set();
+// GeoJSON do repositório + (opcional) planilha publicada em CSV com colunas latitude/longitude e "aprovado" = sim
+function lerCSV(txt) {
+    const linhas = []; let campo = '', linha = [], aspas = false;
+    for (let i = 0; i < txt.length; i++) {
+        const c = txt[i];
+        if (aspas) { if (c === '"' && txt[i + 1] === '"') { campo += '"'; i++; } else if (c === '"') aspas = false; else campo += c; }
+        else if (c === '"') aspas = true;
+        else if (c === ',') { linha.push(campo); campo = ''; }
+        else if (c === '\n' || c === '\r') { if (c === '\r' && txt[i + 1] === '\n') i++; linha.push(campo); linhas.push(linha); linha = []; campo = ''; }
+        else campo += c;
+    }
+    if (campo || linha.length) { linha.push(campo); linhas.push(linha); }
+    const cab = (linhas.shift() || []).map(h => h.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    return linhas.filter(l => l.some(x => x.trim())).map(l => Object.fromEntries(cab.map((h, i) => [h, (l[i] || '').trim()])));
+}
+async function carregarOpcional(o) {
+    const fc = o.arquivo ? await (await fetch(o.arquivo, { cache: 'no-cache' })).json() : { type: 'FeatureCollection', features: [] };
+    if (o.planilha_csv) {
+        try {
+            const linhas = lerCSV(await (await fetch(o.planilha_csv, { cache: 'no-cache' })).text());
+            linhas.filter(r => /^s(im)?$/i.test(r.aprovado || '')).forEach(r => {
+                const lat = parseFloat((r.latitude || '').replace(',', '.')), lon = parseFloat((r.longitude || '').replace(',', '.'));
+                if (!isFinite(lat) || !isFinite(lon)) return;
+                fc.features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] },
+                    properties: { nome: r.titulo || r.tipo || 'Registro', tipo: r.tipo, Data: r.data, Bairro: r.bairro, Descrição: r.descricao, Fonte: r.fonte || 'Contribuição enviada ao Biosimos', ...(r.foto ? { link: r.foto, link_texto: 'Ver foto ↗' } : {}) } });
+            });
+        } catch (err) { console.warn('Planilha de contribuições indisponível', err); }
+    }
+    return fc;
+}
+function antesDasFazendas() { return fazendas.map(f => `${f.id}-fill`).find(id => map.getLayer(id)); }
+function desenharOpcional(o) {
+    const g = opcionaisData[o.id];
+    if (!g || map.getSource(`op-${o.id}`)) return;
+    // mapa ainda carregando (satélite/dados): desenha assim que terminar
+    if (!map.isStyleLoaded()) { map.once('idle', () => { if (opcionaisAtivas.has(o.id)) { desenharOpcional(o); aplicarVisibilidadeCamadas(); } }); return; }
+    const antes = (o.antes && map.getLayer(o.antes)) ? o.antes : antesDasFazendas();
+    if (o.geometria === 'ponto') {
+        map.addSource(`op-${o.id}`, { type: 'geojson', data: g });
+        const cor = o.cor_por && o.cores ? ['match', ['get', o.cor_por], ...Object.entries(o.cores).flat(), o.cor || '#777777'] : o.cor;
+        map.addLayer({ id: `op-${o.id}`, type: 'circle', source: `op-${o.id}`,
+            paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 5, 14, 9], 'circle-color': cor, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
+        if (o.rotulo_campo) try {
+            map.addLayer({ id: `op-${o.id}-nome`, type: 'symbol', source: `op-${o.id}`, minzoom: o.rotulo_minzoom || 12,
+                layout: { 'text-field': ['get', o.rotulo_campo], 'text-size': 11.5, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-max-width': 10,
+                          'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'] },
+                paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.4 } });
+        } catch (err) { console.warn('Rótulos indisponíveis', err); }
+        return;
+    }
+    if (o.tipo === 'vetor') {
+        // tiles vetoriais estáticos (camadas grandes: lotes urbanos, zoneamento)
+        const base = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+        map.addSource(`op-${o.id}`, { type: 'vector', tiles: [base + o.tiles], minzoom: o.tiles_min || 10, maxzoom: o.tiles_max || 16 });
+        const sl = { source: `op-${o.id}`, 'source-layer': o.camada_fonte, ...(o.minzoom ? { minzoom: o.minzoom } : {}) };
+        const cor = o.cor_por && o.cores
+            ? ['match', o.cor_prefixo ? ['slice', ['get', o.cor_por], 0, o.cor_prefixo] : ['get', o.cor_por], ...Object.entries(o.cores).flat(), o.cor || '#90a4ae'] : o.cor;
+        map.addLayer({ id: `op-${o.id}-hit`, type: 'fill', ...sl, paint: { 'fill-color': cor, 'fill-opacity': o.preenchimento ?? 0.01 } }, antes);
+        map.addLayer({ id: `op-${o.id}`, type: 'line', ...sl, paint: { 'line-color': o.cor_linha || cor, 'line-width': o.largura || 0.8, 'line-opacity': o.opacidade ?? 0.9 } }, antes);
+        if (o.rotulo_campo) try {
+            map.addLayer({ id: `op-${o.id}-nome`, type: 'symbol', ...sl, minzoom: o.rotulo_minzoom || 16,
+                layout: { 'text-field': ['get', o.rotulo_campo], 'text-size': 10.5, 'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'], 'text-max-width': 8 },
+                paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.3 } });
+        } catch (err) { console.warn('Rótulos indisponíveis', err); }
+        return;
+    }
+    if (o.tipo === 'imagem') {
+        map.addSource(`op-${o.id}`, { type: 'image', url: g.imagem, coordinates: g.cantos });
+        map.addLayer({ id: `op-${o.id}`, type: 'raster', source: `op-${o.id}`, paint: { 'raster-opacity': o.opacidade ?? 0.8, 'raster-resampling': o.suave ? 'linear' : 'nearest' } }, antes);
+        return;
+    }
+    map.addSource(`op-${o.id}`, { type: 'geojson', data: g });
+    const corP = o.cor_numerica ? ['interpolate', ['linear'], ['coalesce', ['get', o.cor_numerica.campo], 0], ...o.cor_numerica.paradas.flat()]
+        : o.cor_por && o.cores ? ['match', ['get', o.cor_por], ...Object.entries(o.cores).flat(), o.cor || '#777777'] : o.cor;
+    if (o.preenchimento) map.addLayer({ id: `op-${o.id}-fill`, type: 'fill', source: `op-${o.id}`, paint: { 'fill-color': corP, 'fill-opacity': o.preenchimento } }, antes);
+    if (o.halo) map.addLayer({ id: `op-${o.id}-halo`, type: 'line', source: `op-${o.id}`, paint: { 'line-color': '#000000', 'line-width': (o.largura || 1.5) + 2.5, 'line-opacity': 0.4 } }, antes);
+    if (o.clicavel && o.geometria !== 'linha') map.addLayer({ id: `op-${o.id}-hit`, type: 'fill', source: `op-${o.id}`, paint: { 'fill-color': '#000000', 'fill-opacity': 0.01 } }, antes);
+    const largura = o.geometria === 'linha'
+        ? ['interpolate', ['linear'], ['coalesce', ['get', 'ordem'], 3], 3, 1.2, 5, 2.2, 7, 3.6, 9, 5]
+        : (o.largura || 1.5);
+    map.addLayer({ id: `op-${o.id}`, type: 'line', source: `op-${o.id}`,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': corP, 'line-width': largura, 'line-opacity': o.opacidade ?? 0.95, ...(o.tracejado ? { 'line-dasharray': o.tracejado } : {}) } }, antes);
+    if (o.geometria === 'linha' && o.rotulo_campo) try {
+        map.addLayer({ id: `op-${o.id}-nome`, type: 'symbol', source: `op-${o.id}`, minzoom: o.rotulo_minzoom || 9,
+            layout: { 'symbol-placement': 'line', 'text-field': ['get', o.rotulo_campo], 'text-size': 11.5, 'symbol-spacing': 350,
+                      'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'], 'text-letter-spacing': 0.03 },
+            paint: { 'text-color': '#e1f5fe', 'text-halo-color': '#01579b', 'text-halo-width': 1.4 } });
+    } catch (err) { console.warn('Nomes dos rios indisponíveis', err); }
+    else if (o.rotulo_campo) try {
+        const pts = { type: 'FeatureCollection', features: g.features.filter(f => f.properties[o.rotulo_campo]).map(f => ({ type: 'Feature', properties: f.properties, geometry: turf.pointOnFeature(f).geometry })) };
+        map.addSource(`op-${o.id}-pts`, { type: 'geojson', data: pts });
+        map.addLayer({ id: `op-${o.id}-nome`, type: 'symbol', source: `op-${o.id}-pts`, minzoom: o.rotulo_minzoom || 0,
+            layout: { 'text-field': ['get', o.rotulo_campo], 'text-size': o.rotulo_tamanho || 12, 'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'], 'text-max-width': 9 },
+            paint: { 'text-color': o.cor, 'text-halo-color': '#000000', 'text-halo-width': 1.5 } });
+    } catch (err) { console.warn('Rótulos indisponíveis', err); }
+}
+function removerOpcional(o) {
+    [`op-${o.id}-nome`, `op-${o.id}`, `op-${o.id}-halo`, `op-${o.id}-fill`, `op-${o.id}-hit`].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
+    [`op-${o.id}-pts`, `op-${o.id}`].forEach(id => { if (map.getSource(id)) map.removeSource(id); });
+}
+function camadasBase() {
+    const corProp = Object.values(dadosGerais.agrupar_por?.cores || {})[0] || fazendas[0]?.cor || '#ffd54f';
+    const base = [];
+    if (fazendas.length) base.push({ id: 'propriedades', nome: 'Áreas das propriedades', cor: corProp, icone: 'area' },
+                                    { id: 'preenchimento', nome: 'Preenchimento das áreas', cor: corProp, icone: 'fill' });
+    camadas.forEach(c => base.push({ id: c.id, nome: c.nome, icone: c.tipo === 'circle' ? 'dot' : (c.tipo === 'fill' ? 'fill' : 'line'),
+        cor: c.cores ? Object.values(c.cores)[0] : c.cor }));
+    base.push({ id: 'nomes', nome: 'Nomes no mapa', icone: 'texto', cor: '#1d2a22' });
+    return base;
+}
+function iconeCamada(o) {
+    if (o.icone === 'dot') return `<i class="ic-dot" style="background:${o.cor}"></i>`;
+    if (o.icone === 'fill' || o.icone === 'area') return `<i class="ic-area${o.icone === 'fill' ? ' cheia' : ''}" style="border-color:${o.cor};background:${o.cor}${o.icone === 'fill' ? '88' : '22'}"></i>`;
+    if (o.icone === 'texto') return '<i class="ic-texto">Aa</i>';
+    return `<i class="ic-line" style="border-color:${o.cor}"></i>`;
+}
+function renderOpcionais() {
+    const lista = dadosGerais.camadas_opcionais || [];
+    const el = document.getElementById('camadasOpcionais');
+    if (!el) return;
+    el.hidden = false;
+    const linha = (o, tipo, on) => `<button type="button" class="camada-row${on ? ' ativo' : ''}" data-tipo="${tipo}" data-id="${esc(o.id)}" aria-pressed="${on}" title="${esc(o.fonte ? 'Fonte: ' + o.fonte : '')}">
+        ${iconeCamada(o)}<span class="camada-nome">${esc(o.nome)}</span><span class="chave" aria-hidden="true"></span></button>`;
+    const soltas = lista.filter(o => !o.grupo);
+    const grupos = [...new Set(lista.filter(o => o.grupo).map(o => o.grupo))];
+    // categorias de uma camada colorida por atributo (ex.: situação do CAR) com chave própria
+    const subcats = (o) => {
+        const c = camadas.find(x => x.id === o.id);
+        if (!c || !c.categorias_ativaveis || !c.cor_por || !c.cores) return '';
+        const ocl = catOcultas[c.id] || new Set();
+        const feats = (camadasData[c.id] || {}).features || [];
+        const itens = Object.entries(c.cores).map(([k, cor]) => {
+            const n = feats.filter(f => f.properties[c.cor_por] === k).length;
+            if (!n) return '';
+            const on = !ocl.has(k);
+            return `<button type="button" class="camada-row cat${on ? ' ativo' : ''}" data-tipo="cat" data-camada="${esc(c.id)}" data-cat="${esc(k)}" aria-pressed="${on}">
+                <i class="ic-area cheia" style="border-color:${cor};background:${cor}aa"></i><span class="camada-nome">${esc(k)} <span class="lg-n">${n.toLocaleString('pt-BR')}</span></span><span class="chave" aria-hidden="true"></span></button>`;
+        }).join('');
+        const vis = Object.keys(c.cores).length - ocl.size;
+        return `<details class="camada-grupo cats" open><summary><span class="camada-nome">Categorias</span><span class="lg-n">${ocl.size ? `${vis} de ${Object.keys(c.cores).length} ligadas` : 'todas ligadas'}</span></summary>
+            <div class="cats-acoes"><button type="button" data-acao="todas" data-camada="${esc(c.id)}">Ligar todas</button><button type="button" data-acao="nenhuma" data-camada="${esc(c.id)}">Desligar todas</button></div>${itens}</details>`;
+    };
+    el.innerHTML = camadasBase().map(o => linha(o, 'base', ligada(o.id)) + subcats(o)).join('') +
+        [...new Set(lista.map(o => o.secao || 'Hidrografia'))].map(sec => `<div class="camada-sub">${esc(sec)}</div>` +
+            soltas.filter(o => (o.secao || 'Hidrografia') === sec).map(o => linha({ ...o, icone: o.icone || 'line' }, 'opc', opcionaisAtivas.has(o.id))).join('') +
+            grupos.filter(g => (lista.find(o => o.grupo === g).secao || 'Hidrografia') === sec).map(g => {
+                const itens = lista.filter(o => o.grupo === g);
+                const ativos = itens.filter(o => opcionaisAtivas.has(o.id)).length;
+                return `<details class="camada-grupo"${ativos ? ' open' : ''}><summary>${iconeCamada({ icone: 'line', cor: itens[0].cor })}<span class="camada-nome">${esc(g)}</span><span class="lg-n">${ativos ? `${ativos} ligada${ativos > 1 ? 's' : ''}` : `${itens.length} bacias`}</span></summary>
+                    ${itens.map(o => linha({ ...o, icone: 'line' }, 'opc', opcionaisAtivas.has(o.id))).join('')}</details>`;
+            }).join('')).join('');
+    el.querySelectorAll('.camada-row[data-tipo=cat]').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.camada, k = b.dataset.cat;
+        const ocl = catOcultas[id] = catOcultas[id] || new Set();
+        if (ocl.has(k)) ocl.delete(k); else ocl.add(k);
+        aplicarCategorias(id); renderOpcionais(); renderLegenda();
+    }));
+    el.querySelectorAll('.cats-acoes button').forEach(b => b.addEventListener('click', () => {
+        const c = camadas.find(x => x.id === b.dataset.camada);
+        catOcultas[c.id] = b.dataset.acao === 'todas' ? new Set() : new Set(Object.keys(c.cores));
+        aplicarCategorias(c.id); renderOpcionais(); renderLegenda();
+    }));
+    el.querySelectorAll('.camada-row[data-tipo=base]').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.id;
+        if (ocultas.has(id)) ocultas.delete(id); else ocultas.add(id);
+        const on = ligada(id);
+        b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on);
+        aplicarFiltroMapa(); aplicarVisibilidadeCamadas(); renderLegenda();
+    }));
+    el.querySelectorAll('.camada-row[data-tipo=opc]').forEach(b => b.addEventListener('click', async () => {
+        const o = lista.find(x => x.id === b.dataset.id);
+        if (opcionaisAtivas.has(o.id)) {
+            opcionaisAtivas.delete(o.id); removerOpcional(o);
+        } else {
+            b.classList.add('carregando');
+            try {
+                if (o.tipo === 'vetor') opcionaisData[o.id] = opcionaisData[o.id] || { vetor: true };
+                else if (!opcionaisData[o.id]) opcionaisData[o.id] = await carregarOpcional(o);
+                opcionaisAtivas.add(o.id); desenharOpcional(o); aplicarVisibilidadeCamadas();
+            } catch (err) { console.error(err); alertaCamada(b); }
+            b.classList.remove('carregando');
+        }
+        const on = opcionaisAtivas.has(o.id);
+        b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on);
+        if (on && o.tipo === 'vetor' && o.zoom_minimo && map.getZoom() < o.zoom_minimo) map.easeTo({ center: o.centro || map.getCenter(), zoom: o.zoom_minimo, duration: 900 });
+        else if (on && o.enquadrar && opcionaisData[o.id]?.features) map.fitBounds(boundsDe(opcionaisData[o.id]), { padding: 40, duration: 900 });
+        const grp = b.closest('.camada-grupo');
+        if (grp) { const n = grp.querySelectorAll('.camada-row.ativo').length; grp.querySelector('summary .lg-n').textContent = n ? `${n} ligada${n > 1 ? 's' : ''}` : `${grp.querySelectorAll('.camada-row').length} bacias`; }
+        renderLegenda();
+    }));
+}
+function alertaCamada(b) { b.title = 'Camada indisponível no momento'; b.classList.add('erro'); }
+
+function popupOpcional(e, soPrioritarias) {
+    const lista = (dadosGerais.camadas_opcionais || []).filter(o => opcionaisAtivas.has(o.id) && o.clicavel && (!soPrioritarias || o.prioridade));
+    const ids = lista.flatMap(o => [`op-${o.id}-hit`, `op-${o.id}`]).filter(id => map.getLayer(id));
+    if (!ids.length) return false;
+    const caixa = [[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]];
+    const hit = map.queryRenderedFeatures(caixa, { layers: ids });
+    if (!hit.length) return false;
+    // prioriza rios (linhas) sobre áreas
+    const h = hit.find(x => lista.some(o => o.prioridade && x.source === `op-${o.id}`)) || hit.find(x => x.layer.type === 'line' && x.source.startsWith('op-rios')) || hit[0];
+    const p = h.properties;
+    const oc = lista.find(o => h.source === `op-${o.id}`) || {};
+    const linhas = oc.campos ? camposDe(oc, p).map(k => [k, p[k]]) : [];
+    if (!oc.campos) Object.keys(p).filter(k => k.startsWith('MapBiomas')).forEach(k => linhas.push([k, p[k]]));
+    if (p.rio && p.nome !== p.rio) linhas.push(['Curso d’água', p.rio]);
+    if (p.bacia) linhas.push(['Bacia hidrográfica', p.bacia]);
+    if (p.area_km2) linhas.push(['Área', `${fmt(p.area_km2, 2)} km²`]);
+    if (p.ordem) linhas.push(['Ordem (Strahler)', p.ordem]);
+    if (p.dominio) linhas.push(['Domínio', p.dominio === 'E' ? 'Estadual' : (p.dominio === 'U' ? 'Federal' : p.dominio)]);
+    if (p.cobacia) linhas.push(['Código Otto', p.cobacia]);
+    if (p.regiao_hidrografica) linhas.push(['Região hidrográfica', p.regiao_hidrografica]);
+    new mapboxgl.Popup({ maxWidth: '300px' }).setLngLat(e.lngLat)
+        .setHTML(`<div class="popup"><h3>${esc(p.nome || 'Sem nome')}</h3><dl class="popup-dl">${linhas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+            ${linkHtml(p)}${oc.link_fixo ? `<a class="btn btn-mini" href="${esc(oc.link_fixo)}" target="_blank" rel="noopener">${esc(oc.link_fixo_texto || 'Abrir ↗')}</a>` : ''}
+            <p class="popup-hint">Fonte: ${esc(oc.fonte || 'ANA – Base Hidrográfica Ottocodificada')}</p></div>`).addTo(map);
+    return true;
+}
+
+function camposDe(c, p) {
+    const lista = [...(c.campos || [])];
+    (c.campos_prefixos || []).forEach(pre => Object.keys(p).filter(k => k.startsWith(pre) && !lista.includes(k)).forEach(k => lista.push(k)));
+    return lista.filter(k => p[k] !== undefined && p[k] !== null && p[k] !== '');
+}
+function linkHtml(p) { return p.link ? `<a class="btn btn-mini" href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.link_texto || 'Ver no MapBiomas Alerta ↗')}</a>` : ''; }
+// categorias ocultas por camada (ex.: imóveis 'Cancelado' desligados)
+const catOcultas = {};
+function aplicarCategorias(id) {
+    const c = camadas.find(x => x.id === id); if (!c) return;
+    const ocl = [...(catOcultas[id] || [])];
+    const filtro = ocl.length ? ['!', ['in', ['get', c.cor_por], ['literal', ocl]]] : null;
+    [`cam-${id}`, `cam-${id}-line`].forEach(l => { if (map.getLayer(l)) map.setFilter(l, filtro); });
+}
+// ---------- camada de imóveis: busca por CAR e troca de coloração ----------
+function camadaBusca() { return camadas.find(c => c.id === dadosGerais.busca_camada); }
+function mostrarFeicao(c, f) {
+    map.fitBounds(boundsDe(f), { padding: 80, maxZoom: 15, duration: 900 });
+    if (map.getLayer(`cam-${c.id}-sel`)) map.setFilter(`cam-${c.id}-sel`, ['==', ['get', 'nome'], f.properties.nome]);
+    const p = f.properties, cor = (c.cores || {})[p[c.cor_por]] || '#777';
+    const tabela = camposDe(c, p).map(k => `<dt>${esc(k)}</dt><dd>${esc(p[k])}</dd>`).join('');
+    setTimeout(() => new mapboxgl.Popup({ maxWidth: '320px' }).setLngLat(turf.pointOnFeature(f).geometry.coordinates)
+        .setHTML(`<div class="popup"><h3 class="mono" style="font-size:.8rem">${esc(p.nome)}</h3><span class="status-badge" style="background:${cor}">${esc(p[c.cor_por])}</span><dl class="popup-dl">${tabela}</dl></div>`).addTo(map), 950);
+}
+function renderBuscaCamada() {
+    const c = camadaBusca(); if (!c) return;
+    const busca = document.getElementById('farmSearch'), lista = document.getElementById('farmList');
+    busca.hidden = false; busca.placeholder = dadosGerais.busca_placeholder || 'Buscar pelo número do CAR';
+    const feats = (camadasData[c.id] || {}).features || [];
+    const desenhar = () => {
+        const q = busca.value.trim().toUpperCase().replace(/[.\s]/g, '');
+        const nivel = lista.dataset.nivel || '';
+        const chips = (dadosGerais.busca_niveis || []).map(n => {
+            const tot = feats.filter(f => f.properties.pendencia_nivel === n).length;
+            return `<button type="button" class="busca-chip${n === nivel ? ' ativo' : ''}" data-n="${esc(n)}">${esc(n)} (${tot})</button>`;
+        }).join('');
+        let achados;
+        if (nivel) {
+            achados = feats.filter(f => f.properties.pendencia_nivel === nivel && (q.length < 3 || f.properties.nome.toUpperCase().replace(/[.\s]/g, '').includes(q)))
+                .sort((a, b) => (b.properties.pendencias_n || 0) - (a.properties.pendencias_n || 0) || parseFloat((b.properties['Área (ha)'] || '0').replace('.', '').replace(',', '.')) - parseFloat((a.properties['Área (ha)'] || '0').replace('.', '').replace(',', '.'))).slice(0, 40);
+        } else if (q.length < 3) {
+            lista.innerHTML = (chips ? `<div class="busca-chips">${chips}</div>` : '') + `<p class="hint">${feats.length.toLocaleString('pt-BR')} imóveis no mapa. Digite parte do número do CAR (ex.: 4113700-2F) ou clique num imóvel no mapa.</p>`;
+            ligarChips(); return;
+        } else achados = feats.filter(f => f.properties.nome.toUpperCase().replace(/[.\s]/g, '').includes(q)).slice(0, 12);
+        lista.innerHTML = (chips ? `<div class="busca-chips">${chips}</div>` : '') + (achados.length ? achados.map((f, i) => `<button type="button" class="busca-item" data-i="${feats.indexOf(f)}">
+            <span class="swatch" style="background:${(c.cores || {})[f.properties[c.cor_por]] || '#777'}"></span><span class="mono">${esc(f.properties.nome)}</span>
+            <span class="farm-meta">${esc(f.properties['Área (ha)'] || '')} ha${f.properties.pendencias_n ? ` · ${f.properties.pendencias_n} pend.` : ''}</span></button>`).join('') : '<p class="hint">Nenhum imóvel encontrado.</p>');
+        ligarChips();
+        lista.querySelectorAll('.busca-item').forEach(b => b.addEventListener('click', () => mostrarFeicao(c, feats[Number(b.dataset.i)])));
+    };
+    function ligarChips() {
+        lista.querySelectorAll('.busca-chip').forEach(b => b.addEventListener('click', () => {
+            lista.dataset.nivel = lista.dataset.nivel === b.dataset.n ? '' : b.dataset.n; desenhar();
+        }));
+    }
+    busca.oninput = desenhar; desenhar();
+}
+function renderModosCor() {
+    const c = camadas.find(x => x.cor_por_opcoes); const el = document.getElementById('modoCor');
+    if (!c || !el) return;
+    el.hidden = false;
+    el.innerHTML = c.cor_por_opcoes.map((o, i) => `<button type="button" data-i="${i}" class="${i === 0 ? 'active' : ''}">${esc(o.rotulo)}</button>`).join('');
+    const aplicar = (o) => {
+        c.cor_por = o.campo; c.cores = o.cores; c.nome = o.titulo || c.nome;
+        catOcultas[c.id] = new Set(); aplicarCategorias(c.id); renderOpcionais();
+        if (map.getLayer(`cam-${c.id}`)) map.setPaintProperty(`cam-${c.id}`, 'fill-color', ['match', ['get', o.campo], ...Object.entries(o.cores).flat(), '#777777']);
+        renderLegenda(); if (camadaBusca() === c) renderBuscaCamada();
+    };
+    aplicar(c.cor_por_opcoes[0]);
+    el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        el.querySelectorAll('button').forEach(o => o.classList.toggle('active', o === b));
+        aplicar(c.cor_por_opcoes[Number(b.dataset.i)]);
+    }));
+}
+
+// Cores das áreas: 'municipio' (uma cor por município) ou 'situacao' (cor da situação)
+let modoCor = 'situacao';
+const corMapa = (f) => (modoCor === 'municipio' && f.cor_municipio) ? f.cor_municipio : f.cor;
+function corMunicipios(c) { return (modoCor === 'municipio' || !dadosGerais.cores_por_municipio) ? ['coalesce', ['get', 'cor'], c.cor] : '#ffffff'; }
+function aplicarCores() {
+    if (!map.style) return;
+    fazendas.forEach(f => {
+        if (map.getLayer(`${f.id}-fill`)) map.setPaintProperty(`${f.id}-fill`, 'fill-color', corMapa(f));
+        if (map.getLayer(`${f.id}-line`)) map.setPaintProperty(`${f.id}-line`, 'line-color', corMapa(f));
+    });
+    camadas.filter(c => c.destaque).forEach(c => {
+        const cor = corMunicipios(c);
+        if (map.getLayer(`cam-${c.id}`)) map.setPaintProperty(`cam-${c.id}`, 'line-color', cor);
+        if (map.getLayer(`cam-${c.id}-fill`)) map.setPaintProperty(`cam-${c.id}-fill`, 'fill-color', cor);
+        if (map.getLayer(`cam-${c.id}-nome`)) map.setPaintProperty(`cam-${c.id}-nome`, 'text-color', cor);
+    });
+}
+const ehPonto = (id) => geojsons[id]?.features?.[0]?.geometry?.type === 'Point';
+function naEtapa(f) {
+    const cfg = dadosGerais.filtro_etapa;
+    return !cfg || !filtroEtapa || f[cfg.campo] === filtroEtapa;
+}
+function renderFiltroEtapa() {
+    const cfg = dadosGerais.filtro_etapa;
+    const el = document.getElementById('filtroEtapa');
+    if (!cfg || !el) return;
+    const rot = cfg.rotulos || cfg.opcoes;
+    el.innerHTML = `<button type="button" data-etapa="" class="active">Todas</button>` +
+        cfg.opcoes.map((o, i) => `<button type="button" data-etapa="${esc(o)}" title="${esc(o)}">${esc(rot[i])}</button>`).join('');
+    el.hidden = false;
+    el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        el.querySelectorAll('button').forEach(o => o.classList.toggle('active', o === b));
+        filtroEtapa = b.dataset.etapa;
+        if (selecionada && !naEtapa(fazendas.find(f => f.id === selecionada))) selecionada = null;
+        renderFazendas();
+        renderLegenda();
+        aplicarFiltroMapa();
+        enquadrarTodas();
+    }));
+}
+function aplicarFiltroMapa() {
+    if (!map.style) return;
+    fazendas.forEach(f => {
+        const vis = naEtapa(f);
+        ['fill', 'halo', 'line'].forEach(t => {
+            const id = `${f.id}-${t}`;
+            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis && ligada('propriedades') && (t !== 'fill' || (mostrarPreenchimento && ligada('preenchimento'))) ? 'visible' : 'none');
+        });
+    });
+    const cfg = dadosGerais.filtro_etapa;
+    if (!cfg) return;
+    const filtro = filtroEtapa ? ['==', ['get', cfg.campo], filtroEtapa] : null;
+    camadas.forEach(c => ['', '-label', '-line'].forEach(suf => {
+        const id = `cam-${c.id}${suf}`;
+        if (map.getLayer(id) && (camadasData[c.id]?.features || []).some(x => x.properties[cfg.campo])) map.setFilter(id, filtro);
+    }));
+    if (map.getLayer('rotulos')) map.setFilter('rotulos', filtro);
+    const curto = filtroEtapa ? (cfg.rotulos || cfg.opcoes)[cfg.opcoes.indexOf(filtroEtapa)] : '';
+    camadas.filter(c => c.destaque).forEach(c => {
+        const fm = curto ? ['in', curto, ['get', 'etapas']] : null;
+        ['', '-fill', '-halo', '-nome'].forEach(suf => { if (map.getLayer(`cam-${c.id}${suf}`)) map.setFilter(`cam-${c.id}${suf}`, fm); });
+    });
+}
+function aplicarVisibilidadeCamadas() {
+    if (!map.style) return;
+    const vis = (on) => on ? 'visible' : 'none';
+    camadas.forEach(c => ['', '-fill', '-halo', '-line', '-label'].forEach(suf => {
+        const id = `cam-${c.id}${suf}`;
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis(ligada(c.id)));
+    }));
+    camadas.forEach(c => { if (map.getLayer(`cam-${c.id}-nome`)) map.setLayoutProperty(`cam-${c.id}-nome`, 'visibility', vis(ligada(c.id) && ligada('nomes'))); });
+    if (map.getLayer('rotulos')) map.setLayoutProperty('rotulos', 'visibility', vis(ligada('nomes') && ligada('propriedades')));
+    (dadosGerais.camadas_opcionais || []).forEach(o => { if (map.getLayer(`op-${o.id}-nome`)) map.setLayoutProperty(`op-${o.id}-nome`, 'visibility', vis(ligada('nomes'))); });
+}
+function etapaCurta() {
+    const cfg = dadosGerais.filtro_etapa;
+    return cfg && filtroEtapa ? (cfg.rotulos || cfg.opcoes)[cfg.opcoes.indexOf(filtroEtapa)] : '';
+}
+const semAcento = (t) => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function renderFazendas() {
+    if (dadosGerais.busca_camada && !fazendas.length) return;
+    const el = document.getElementById('farmList');
+    const busca = document.getElementById('farmSearch');
+    if (busca) busca.hidden = fazendas.length <= 8;
+    const campoGrupo = dadosGerais.agrupar_por?.campo;
+    el.innerHTML = fazendas
+        .filter(f => naEtapa(f))
+        .filter(f => !filtroGrupo || f[campoGrupo] === filtroGrupo)
+        .filter(f => !filtroFazendas || semAcento(f.nome + ' ' + Object.values(f.info || {}).join(' ')).includes(filtroFazendas)).map(f => {
+        const cont = contarStatus(f.adequacoes);
+        const aberta = selecionada === f.id;
+        const itens = f.adequacoes.map(a => {
+            const st = STATUS[a.status] || STATUS['Pendente'];
+            const quando = a.concluida_em ? ` · ${esc(a.concluida_em)}` : '';
+            const nota = a.nota ? `<span class="item-note">${esc(a.nota)}</span>` : '';
+            const docs = (a.documentos || []).map(d =>
+                `<button type="button" class="doc-btn" data-arquivo="${esc(d.arquivo)}" data-titulo="${esc(d.titulo)}">📄 ${esc(d.titulo)}</button>`).join('');
+            const extra = (nota || docs) ? `<span class="item-extra">${nota}${docs ? `<span class="doc-list">${docs}</span>` : ''}</span>` : '';
+            return `<li><span class="status-dot" style="background:${st.cor}"></span>
+                        <span class="item-text">${esc(a.item)}</span>
+                        <span class="status-tag ${st.classe}">${esc(a.status)}${quando}</span>${extra}</li>`;
+        }).join('');
+        return `
+        <article class="farm ${aberta ? 'open' : ''}" data-id="${f.id}">
+            <button class="farm-head" type="button" aria-expanded="${aberta}">
+                <span class="swatch" style="background:${f.cor}"></span>
+                <span class="farm-name">${esc(f.nome)}</span>
+                <span class="farm-meta">${f.area_ha ? `${fmt(f.area_ha, 1)} ha` : (f.nascentes ? `${f.nascentes} nasc.` : '')}${f.adequacoes.length ? ` · ${cont['Concluída']}/${f.adequacoes.length}` : ''}</span>
+            </button>
+            ${f.adequacoes.length ? `<div class="mini-progress">${barraProgresso(cont, f.adequacoes.length)}</div>` : ''}
+            <div class="farm-body">
+                <dl>
+                    <dt>CAR</dt><dd class="mono">${esc(f.car)}</dd>
+                    ${f.area_ha ? `<dt>Área declarada</dt><dd>${fmt(f.area_ha, 2)} ha</dd>` : ''}
+                    ${f.situacao_car ? `<dt>Situação do CAR</dt><dd>${esc(f.situacao_car)}</dd>` : ''}
+                    ${Object.entries(f.info || {}).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+                </dl>
+                ${fichaHtml(f)}
+                ${indicadoresHtml(f)}
+                ${f.adequacoes.length ? `<h3>Adequações (${f.adequacoes.length})</h3><ul class="adeq-list">${itens}</ul>` : ''}
+                ${(f.documentos || []).map(d => `<button type="button" class="doc-btn" data-arquivo="${esc(d.arquivo)}" data-titulo="${esc(d.titulo)}">📄 ${esc(d.titulo)}</button>`).join('')}
+                ${/^[A-Z]{2}-\d{7}-/.test(f.car || '') ? `<a class="link" href="https://www.registrorural.com.br/car/item/${encodeURIComponent(f.car)}" target="_blank" rel="noopener">Consultar o CAR no Registro Rural ↗</a>` : ''}
+            </div>
+        </article>`;
+    }).join('');
+
+    el.querySelectorAll('.farm-body > .doc-btn').forEach(btn => {
+        btn.addEventListener('click', () => abrirDocumento(btn.dataset.titulo, btn.dataset.arquivo));
+    });
+    el.querySelectorAll('.doc-list .doc-btn').forEach(btn => {
+        btn.addEventListener('click', () => abrirDocumento(btn.dataset.titulo, btn.dataset.arquivo));
+    });
+    el.querySelectorAll('.farm-head').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.closest('.farm').dataset.id;
+            selecionarFazenda(selecionada === id ? null : id, true);
+        });
+    });
+}
+
+// ---------- visualizador de documentos ----------
+const docDialog = document.getElementById('docDialog');
+function abrirDocumento(titulo, arquivo, opcoes = {}) {
+    document.getElementById('docTitle').textContent = titulo;
+    document.getElementById('docFrame').src = opcoes.embed || arquivo;
+    document.getElementById('docOpen').href = arquivo;
+    document.getElementById('docOpen').textContent = opcoes.abrirTexto || 'Abrir em nova aba';
+    document.getElementById('docDownload').href = arquivo;
+    document.getElementById('docDownload').style.display = opcoes.semDownload ? 'none' : '';
+    docDialog.classList.toggle('largo', !!opcoes.largo);
+    docDialog.showModal();
+}
+// Painel de indicadores externo (ex.: Looker Studio)
+function renderIndicadoresExternos() {
+    const ext = dadosGerais.painel_externo;
+    const card = document.querySelector('.sidebar .card');
+    if (!ext || !card || document.getElementById('btnPainelExterno')) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.id = 'btnPainelExterno'; b.className = 'btn btn-externo';
+    b.innerHTML = `📊 ${esc(ext.botao || 'Ver painel de indicadores')}`;
+    b.addEventListener('click', () => abrirDocumento(ext.titulo || 'Painel de indicadores', ext.url,
+        { embed: ext.embed, semDownload: true, largo: true, abrirTexto: ext.abrir_texto || 'Abrir em nova aba' }));
+    card.appendChild(b);
+}
+document.getElementById('docClose').addEventListener('click', () => docDialog.close());
+docDialog.addEventListener('click', (e) => { if (e.target === docDialog) docDialog.close(); });
+docDialog.addEventListener('close', () => { document.getElementById('docFrame').src = 'about:blank'; });
+
+// Documentos de uma fazenda (sem repetir)
+function documentosDa(f) {
+    const vistos = new Map();
+    f.adequacoes.forEach(a => (a.documentos || []).forEach(d => vistos.set(d.arquivo, d)));
+    return [...vistos.values()];
+}
+
+// Indicadores do CAR (ha). "Saldo" negativo = déficit
+// ---------- ficha da propriedade: dados do CAR, relato da visita e fotos ----------
+function galeriaHtml(f, max) {
+    const fotos = f.fotos || [];
+    if (!fotos.length) return '';
+    const mostrar = max ? fotos.slice(0, max) : fotos;
+    const resto = fotos.length - mostrar.length;
+    return `<div class="galeria">${mostrar.map((ft, i) =>
+        `<button type="button" class="foto-mini${ft.tipo === 'mapa' ? ' mapa' : ''}" data-fazenda="${esc(f.id)}" data-idx="${i}" title="${esc(ft.legenda)}">
+            <img src="${esc(ft.mini)}" alt="${esc(ft.legenda)}" loading="lazy">${i === mostrar.length - 1 && resto > 0 ? `<span class="foto-mais">+${resto}</span>` : ''}</button>`).join('')}</div>`;
+}
+function fichaHtml(f) {
+    let h = '';
+    if (f.data_visita) h += `<p class="ficha-linha"><strong>Visita técnica:</strong> ${esc(f.data_visita)}</p>`;
+    const cad = f.cadastro || [];
+    if (cad.length) {
+        h += `<h3>Dados cadastrais (CAR)</h3>` + cad.map((im, i) => `${cad.length > 1 ? `<p class="ficha-sub">Imóvel ${i + 1}</p>` : ''}
+            <dl class="ficha-dl">${Object.entries(im).filter(([k, v]) => !(k === 'CAR' && cad.length === 1 && v === f.car)).map(([k, v]) => `<dt>${esc(k)}</dt><dd${k === 'CAR' ? ' class="mono"' : ''}>${esc(v)}</dd>`).join('')}</dl>`).join('');
+    }
+    const rel = f.relato || {};
+    const chaves = Object.keys(rel);
+    if (chaves.length) h += `<h3>Relatório da visita</h3>` + chaves.map((k, i) =>
+        `<details class="relato"${i === 0 ? ' open' : ''}><summary>${esc(k)}</summary><p>${esc(rel[k])}</p></details>`).join('');
+    if ((f.fotos || []).length) h += `<h3>Fotos e mapas (${f.fotos.length})</h3>${galeriaHtml(f)}`;
+    return h;
+}
+// visualizador de fotos
+let fotoAtual = { f: null, i: 0 };
+function abrirFoto(id, idx) {
+    const f = fazendas.find(x => x.id === id);
+    if (!f || !(f.fotos || []).length) return;
+    fotoAtual = { f, i: idx };
+    mostrarFoto();
+    const dlg = document.getElementById('fotoDialog');
+    if (!dlg.open) dlg.showModal();
+}
+function mostrarFoto() {
+    const { f, i } = fotoAtual, ft = f.fotos[i];
+    document.getElementById('fotoImg').src = ft.arquivo;
+    document.getElementById('fotoImg').alt = ft.legenda;
+    document.getElementById('fotoLegenda').textContent = ft.legenda;
+    document.getElementById('fotoTitulo').textContent = f.nome;
+    document.getElementById('fotoContador').textContent = `${i + 1} / ${f.fotos.length}`;
+    document.getElementById('fotoAbrir').href = ft.arquivo;
+}
+function passarFoto(d) {
+    const n = fotoAtual.f.fotos.length;
+    fotoAtual.i = (fotoAtual.i + d + n) % n;
+    mostrarFoto();
+}
+document.addEventListener('click', (e) => {
+    const b = e.target.closest('.foto-mini');
+    if (b) { e.preventDefault(); abrirFoto(b.dataset.fazenda, Number(b.dataset.idx)); }
+    const v = e.target.closest('.ver-ficha');
+    if (v) { selecionarFazenda(v.dataset.fazenda, false); document.body.classList.remove('panel-closed'); }
+});
+(function prepararFotoDialog() {
+    const dlg = document.getElementById('fotoDialog');
+    if (!dlg) return;
+    document.getElementById('fotoFechar').onclick = () => dlg.close();
+    document.getElementById('fotoAnt').onclick = () => passarFoto(-1);
+    document.getElementById('fotoProx').onclick = () => passarFoto(1);
+    dlg.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') passarFoto(-1); if (e.key === 'ArrowRight') passarFoto(1); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+})();
+
+function indicadoresHtml(f) {
+    if (!f.indicadores) return '';
+    const linhas = Object.entries(f.indicadores).map(([k, v]) => {
+        const saldo = /saldo/i.test(k);
+        const recompor = /recompor/i.test(k);
+        const cls = saldo ? (v < 0 ? 'neg' : 'pos') : (recompor && v > 0 ? 'neg' : '');
+        const txt = saldo && v < 0 ? `déficit de ${fmt(-v, 2)} ha` : (saldo ? `excedente de ${fmt(v, 2)} ha` : `${fmt(v, 2)} ha`);
+        const pct = !saldo && !recompor && f.area_ha ? `<small>${fmt(v / f.area_ha * 100, 1)}%</small>` : '';
+        return `<tr class="${cls}"><th>${esc(k)}</th><td>${txt} ${pct}</td></tr>`;
+    }).join('');
+    return `<h3>Indicadores do CAR</h3><table class="ind">${linhas}</table>`;
+}
+
+function docBotao(titulo, arquivo) {
+    if (!arquivo) return '';
+    return `<button type="button" class="doc-btn" onclick="abrirDocumento('${esc(titulo)}', '${esc(arquivo)}')">📄 ${esc(titulo)}</button>`;
+}
+
+// Legenda sobre o mapa: fazendas, camadas extras e pontos (com documento clicável)
+function renderLegenda() {
+    const el = document.getElementById('legend');
+    if (!el) return;
+    const itens = [];
+    if (dadosGerais.agrupar_por && !ligada('propriedades')) {
+        // propriedades ocultas: nada a mostrar desse grupo
+    } else if (dadosGerais.agrupar_por) {
+        const g = dadosGerais.agrupar_por;
+        itens.push(`<div class="lg-group">${esc(g.titulo)}${modoCor === 'municipio' ? ' <span class="lg-n">(cor na lista · clique p/ filtrar)</span>' : ''}</div>`);
+        Object.entries(g.cores).forEach(([k, cor]) => {
+            const n = fazendas.filter(f => naEtapa(f) && f[g.campo] === k).length;
+            if (n) itens.push(`<button type="button" class="lg-item lg-filtro" data-grupo="${esc(k)}"><i class="lg-area" style="border-color:${cor};background:${cor}55"></i>${esc(k)} (${n})</button>`);
+        });
+    } else if (dadosGerais.legenda_agrupada) {
+        const cor = fazendas[0]?.cor || '#ffd54f';
+        itens.push(`<div class="lg-item"><i class="lg-area" style="border-color:${cor};background:${cor}33"></i>${esc(dadosGerais.legenda_agrupada)} (${fazendas.length})</div>`);
+    } else {
+        fazendas.forEach(f => itens.push(`<div class="lg-item"><i class="lg-area" style="border-color:${f.cor};background:${f.cor}33"></i>${esc(f.nome)}</div>`));
+    }
+    camadas.filter(c => ligada(c.id)).forEach(c => {
+        if (c.cor_por && c.cores) {
+            const feats = (camadasData[c.id] || {}).features || [];
+            const sub = Object.entries(c.cores).map(([k, cor]) => {
+                const ce = dadosGerais.filtro_etapa?.campo;
+                const grupo = feats.filter(f => f.properties[c.cor_por] === k && (!filtroEtapa || !ce || !f.properties[ce] || f.properties[ce] === filtroEtapa));
+                if (!grupo.length) return '';
+                const lista = c.listar ? grupo.map(f => f.properties.doc_arquivo
+                    ? `<button type="button" class="lg-item lg-doc lg-leaf" data-titulo="${esc(f.properties.nome)} – ${esc(f.properties.Portaria || '')}" data-arquivo="${esc(f.properties.doc_arquivo)}">${esc(f.properties.nome)} 📄</button>`
+                    : `<div class="lg-item lg-leaf">${esc(f.properties.nome)}</div>`).join('') : '';
+                const off = (catOcultas[c.id] || new Set()).has(k);
+                return `<div class="lg-item lg-sub${off ? ' lg-off' : ''}"><i class="${c.tipo === 'fill' ? 'lg-sq' : 'lg-dot'}" style="background:${cor}"></i>${esc(k)} (${grupo.length})</div>${lista}`;
+            }).join('');
+            itens.push(`<div class="lg-group">${esc(c.nome)}</div>${sub}`);
+        } else if (c.destaque) {
+            const curto = etapaCurta();
+            const feats = ((camadasData[c.id] || {}).features || []).filter(f => !curto || String(f.properties.etapas).includes(curto))
+                .sort((a, b) => a.properties.nome.localeCompare(b.properties.nome, 'pt-BR'));
+            const porMun = modoCor === 'municipio' || !dadosGerais.cores_por_municipio;
+            itens.push(`<div class="lg-group">${porMun ? '' : '<i class="lg-line" style="border-color:#ffffff"></i>'}${esc(c.nome)} (${feats.length})</div>` +
+                `<div class="lg-muns">${feats.map(f => `<button type="button" class="lg-item lg-leaf lg-mun" data-mun="${esc(f.properties.nome)}" title="Aproximar em ${esc(f.properties.nome)}">${porMun ? `<i class="lg-area" style="border-color:${f.properties.cor};background:${f.properties.cor}55"></i>` : ''}<span class="lg-mun-nome">${esc(f.properties.nome)}</span> ${f.properties.propriedades ? `<span class="lg-n">${f.properties.propriedades}</span>` : ''}</button>`).join('')}</div>`);
+        } else {
+            itens.push(`<div class="lg-item"><i class="${c.tipo === 'fill' ? 'lg-sq' : 'lg-dot'}" style="background:${c.cor}"></i>${esc(c.nome)}</div>`);
+        }
+    });
+    const opsAtivas = (dadosGerais.camadas_opcionais || []).filter(o => opcionaisAtivas.has(o.id));
+    const gruposAtivos = [...new Set(opsAtivas.filter(o => o.grupo).map(o => o.grupo))];
+    gruposAtivos.forEach(g => { const it = opsAtivas.filter(o => o.grupo === g);
+        itens.push(`<div class="lg-item"><i class="lg-line" style="border-color:${it[0].cor}"></i>${esc(g)}: ${it.map(o => esc(o.nome)).join(', ')}</div>`); });
+    opsAtivas.filter(o => !o.grupo && o.legenda_itens).forEach(o => itens.push(`<div class="lg-group">${esc(o.nome)}</div>` +
+        o.legenda_itens.map(i => `<div class="lg-item lg-sub"><i class="lg-sq" style="background:${i.cor}"></i>${esc(i.rotulo)}</div>`).join('')));
+    opsAtivas.filter(o => !o.grupo && !o.legenda_itens).forEach(o =>
+        itens.push(`<div class="lg-item" title="Fonte: ${esc(o.fonte || '')}"><i class="lg-line" style="border-color:${o.cor}"></i>${esc(o.nome)}</div>`));
+    fazendas.forEach(f => (f.pontos || []).forEach(p => {
+        const conteudo = `<i class="lg-ring" style="border-color:${f.cor}"></i>${esc(p.nome)}`;
+        itens.push(p.documento
+            ? `<button type="button" class="lg-item lg-doc" data-titulo="${esc(p.documento.titulo)}" data-arquivo="${esc(p.documento.arquivo)}" title="Ver ${esc(p.documento.titulo)}">${conteudo} 📄</button>`
+            : `<div class="lg-item">${conteudo}</div>`);
+    }));
+    const aberta = window.matchMedia('(min-width: 801px)').matches ? ' open' : '';
+    el.innerHTML = `<details${aberta}><summary>Legenda</summary>${itens.join('')}</details>`;
+    el.querySelectorAll('.lg-doc').forEach(b => b.addEventListener('click', () => abrirDocumento(b.dataset.titulo, b.dataset.arquivo)));
+    el.querySelectorAll('.lg-mun').forEach(b => b.addEventListener('click', () => {
+        const c = camadas.find(x => x.destaque);
+        const f = (camadasData[c.id]?.features || []).find(x => x.properties.nome === b.dataset.mun);
+        if (f) map.fitBounds(boundsDe(f), { padding: 40, duration: 900 });
+    }));
+    // Clique num grupo da legenda filtra a lista de propriedades
+    el.querySelectorAll('.lg-filtro').forEach(b => b.addEventListener('click', () => {
+        const ativo = b.classList.toggle('ativo');
+        el.querySelectorAll('.lg-filtro').forEach(o => { if (o !== b) o.classList.remove('ativo'); });
+        filtroGrupo = ativo ? b.dataset.grupo : '';
+        renderFazendas();
+        document.getElementById('farmList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+}
+
+// ---------- informações do programa ----------
+function renderPrograma(pg) {
+    const card = document.getElementById('cardPrograma');
+    if (!pg || !card) return;
+    card.hidden = false;
+    const graficos = (pg.graficos || []).map(g => `
+        <h3>${esc(g.titulo)}</h3>
+        ${g.itens.map(i => `<div class="uso"><span>${esc(i.rotulo)}</span><span class="uso-bar"><i style="width:${i.pct}%"></i></span><strong>${fmt(i.pct, 1)}%</strong></div>`).join('')}
+        ${g.fonte ? `<small class="fonte">${esc(g.fonte)}</small>` : ''}`).join('');
+    const etapas = (pg.etapas || []).map(e => `<li class="${e.classe || ''}"><strong>${esc(e.nome)}</strong> ${esc(e.texto)}</li>`).join('');
+    card.innerHTML = `<h2>${esc(pg.titulo || 'O programa')}</h2>
+        ${pg.texto ? `<p class="prog-txt">${esc(pg.texto)}</p>` : ''}
+        ${etapas ? `<ul class="etapas">${etapas}</ul>` : ''}
+        ${(pg.documentos || []).map(d => `<button type="button" class="doc-btn" data-arquivo="${esc(d.arquivo)}" data-titulo="${esc(d.titulo)}">📄 ${esc(d.titulo)}</button>`).join('')}
+        ${graficos}`;
+    card.querySelectorAll('.doc-btn').forEach(b => b.addEventListener('click', () => abrirDocumento(b.dataset.titulo, b.dataset.arquivo)));
+}
+
+// ---------- próximos vencimentos ----------
+// Regras de cor: vencido sem providência = vermelho; vencido com providência em andamento = laranja;
+// vence em até 90 dias = amarelo; mais de 90 dias = verde.
+function renderPrazos(prazos) {
+    const card = document.getElementById('cardPrazos');
+    if (!prazos || !prazos.length) return;
+    card.hidden = false;
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const dia = 86400000;
+    const itens = prazos.map(p => {
+        const [a, m, d] = p.data.split('-').map(Number);
+        const data = new Date(a, m - 1, d);
+        const dias = Math.round((data - hoje) / dia);
+        let classe, rotuloPrazo;
+        if (dias < 0) {
+            classe = p.andamento ? 'andamento' : 'vencido';
+            const meses = Math.round(-dias / 30.4);
+            rotuloPrazo = meses >= 2 ? `vencido há ${meses} meses` : `vencido há ${-dias} dias`;
+        } else {
+            classe = dias <= 90 ? 'proximo' : 'ok';
+            const meses = Math.round(dias / 30.4);
+            rotuloPrazo = dias === 0 ? 'vence hoje' : (dias <= 60 ? `em ${dias} dias` : `em ${meses} meses`);
+        }
+        return { ...p, dataTxt: `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${a}`, dias, classe, rotuloPrazo };
+    });
+    // Ordem: vencidos sem providência, próximos (por data), vencidos em andamento
+    const peso = { vencido: 0, proximo: 1, ok: 1, andamento: 2 };
+    itens.sort((x, y) => peso[x.classe] - peso[y.classe] || (x.classe === 'andamento' ? y.dias - x.dias : x.dias - y.dias));
+    const LIMITE = 6;
+    const lista = document.getElementById('listaPrazos');
+    const desenhar = (todos) => {
+        lista.innerHTML = (todos ? itens : itens.slice(0, LIMITE)).map(p => `
+            <li class="prazo ${p.classe}">
+                <div class="prazo-data"><strong>${p.dataTxt}</strong><span>${p.rotuloPrazo}</span></div>
+                <div class="prazo-txt">
+                    ${esc(p.titulo)}
+                    ${p.andamento ? `<small class="prazo-and">${esc(p.andamento)}</small>` : ''}
+                    ${p.nota ? `<small>${esc(p.nota)}</small>` : ''}
+                    ${p.documento ? `<button type="button" class="doc-btn" data-titulo="${esc(p.documento.titulo)}" data-arquivo="${esc(p.documento.arquivo)}">📄 ${esc(p.documento.titulo)}</button>` : ''}
+                </div>
+            </li>`).join('');
+        lista.querySelectorAll('.doc-btn').forEach(b => b.addEventListener('click', () => abrirDocumento(b.dataset.titulo, b.dataset.arquivo)));
+    };
+    desenhar(false);
+    const btn = document.getElementById('verTodosPrazos');
+    if (itens.length > LIMITE) {
+        btn.hidden = false;
+        btn.textContent = `Ver todos (${itens.length})`;
+        let todos = false;
+        btn.onclick = () => { todos = !todos; desenhar(todos); btn.textContent = todos ? 'Mostrar menos' : `Ver todos (${itens.length})`; };
+    }
+}
+
+// ---------- mapa ----------
+function adicionarCamadas() {
+    fazendas.forEach(f => {
+        const g = geojsons[f.id];
+        if (!g || map.getSource(f.id) || ehPonto(f.id)) return;
+        map.addSource(f.id, { type: 'geojson', data: g });
+        map.addLayer({
+            id: `${f.id}-fill`, type: 'fill', source: f.id,
+            layout: { visibility: mostrarPreenchimento ? 'visible' : 'none' },
+            paint: { 'fill-color': corMapa(f), 'fill-opacity': 0.18 }
+        });
+        map.addLayer({
+            id: `${f.id}-halo`, type: 'line', source: f.id,
+            paint: { 'line-color': '#000000', 'line-width': 5, 'line-opacity': 0.35 }
+        });
+        map.addLayer({
+            id: `${f.id}-line`, type: 'line', source: f.id,
+            paint: { 'line-color': corMapa(f), 'line-width': 2.5 }
+        });
+    });
+    // Camadas extras definidas em data/fazendas.json -> "camadas"
+    camadas.forEach(c => {
+        const g = camadasData[c.id];
+        if (!g || map.getSource(`cam-${c.id}`)) return;
+        map.addSource(`cam-${c.id}`, { type: 'geojson', data: g });
+        if (c.tipo === 'line' && c.destaque) {
+            // Municípios em destaque: preenchimento leve, contorno com halo e nome no centro
+            const antes = fazendas.map(f => `${f.id}-fill`).find(id => map.getLayer(id));
+            map.addLayer({ id: `cam-${c.id}-fill`, type: 'fill', source: `cam-${c.id}`, paint: { 'fill-color': corMunicipios(c), 'fill-opacity': 0.08 } }, antes);
+            map.addLayer({ id: `cam-${c.id}-halo`, type: 'line', source: `cam-${c.id}`, paint: { 'line-color': '#000000', 'line-width': 5, 'line-opacity': 0.45 } }, antes);
+            map.addLayer({ id: `cam-${c.id}`, type: 'line', source: `cam-${c.id}`, paint: { 'line-color': corMunicipios(c), 'line-width': 2.4 } }, antes);
+            const centros = { type: 'FeatureCollection', features: g.features.map(f => ({ type: 'Feature', properties: f.properties, geometry: turf.pointOnFeature(f).geometry })) };
+            map.addSource(`cam-${c.id}-centros`, { type: 'geojson', data: centros });
+            try {
+                map.addLayer({ id: `cam-${c.id}-nome`, type: 'symbol', source: `cam-${c.id}-centros`, maxzoom: 13,
+                    layout: { 'text-field': ['upcase', ['get', 'nome']], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 11, 12, 15], 'text-letter-spacing': 0.08,
+                              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'], 'text-max-width': 8 },
+                    paint: { 'text-color': corMunicipios(c), 'text-halo-color': '#000000', 'text-halo-width': 1.6 } });
+            } catch (err) { console.warn('Nomes dos municípios indisponíveis', err); }
+            return;
+        }
+        if (c.tipo === 'line') {
+            map.addLayer({ id: `cam-${c.id}`, type: 'line', source: `cam-${c.id}`, paint: { 'line-color': c.cor, 'line-width': 1.5, 'line-opacity': 0.8, 'line-dasharray': [3, 2] } });
+            return;
+        }
+        if (c.tipo === 'fill') {
+            const corFill = c.cor_por && c.cores ? ['match', ['get', c.cor_por], ...Object.entries(c.cores).flat(), '#777777'] : c.cor;
+            map.addLayer({ id: `cam-${c.id}`, type: 'fill', source: `cam-${c.id}`, paint: { 'fill-color': corFill, 'fill-opacity': c.opacidade ?? (c.cor_por ? 0.85 : 0.45) } });
+            map.addLayer({ id: `cam-${c.id}-line`, type: 'line', source: `cam-${c.id}`,
+                paint: { 'line-color': c.linha_cor || (c.cor_por ? '#ffffff' : corFill), 'line-width': c.linha_largura ?? (c.cor_por ? 1.5 : 1), 'line-opacity': 0.9 } });
+            if (c.destacar_selecao) map.addLayer({ id: `cam-${c.id}-sel`, type: 'line', source: `cam-${c.id}`, filter: ['==', ['get', 'nome'], ''],
+                paint: { 'line-color': '#ffeb3b', 'line-width': 3.5 } });
+        } else {
+            const cor = c.cor_por && c.cores
+                ? ['match', ['get', c.cor_por], ...Object.entries(c.cores).flat(), '#777777']
+                : c.cor;
+            map.addLayer({ id: `cam-${c.id}`, type: 'circle', source: `cam-${c.id}`,
+                paint: { 'circle-radius': c.cor_por ? 7 : 8, 'circle-color': cor, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 } });
+        }
+        if (c.rotulo !== false) try {
+            map.addLayer({
+                id: `cam-${c.id}-label`, type: 'symbol', source: `cam-${c.id}`, minzoom: 12.5,
+                layout: { 'text-field': ['get', 'nome'], 'text-size': 12, 'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                          ...(c.tipo === 'fill' ? {} : { 'text-offset': [0, 1.2], 'text-anchor': 'top' }) },
+                paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.3 }
+            });
+        } catch (err) { console.warn('Rótulos indisponíveis', err); }
+    });
+
+    // Pontos de interesse (estruturas, represas, pivôs)
+    const pontos = fazendas.flatMap(f => (f.pontos || []).map(p => ({
+        type: 'Feature',
+        properties: { nome: p.nome, descricao: p.descricao || '', fazenda: f.id, cor: f.cor,
+                      doc_titulo: p.documento ? p.documento.titulo : '', doc_arquivo: p.documento ? p.documento.arquivo : '' },
+        geometry: { type: 'Point', coordinates: p.coord }
+    })));
+    if (pontos.length && !map.getSource('pontos')) {
+        map.addSource('pontos', { type: 'geojson', data: { type: 'FeatureCollection', features: pontos } });
+        map.addLayer({
+            id: 'pontos', type: 'circle', source: 'pontos',
+            paint: { 'circle-radius': 7, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'cor'], 'circle-stroke-width': 3 }
+        });
+        try {
+            map.addLayer({
+                id: 'pontos-rotulo', type: 'symbol', source: 'pontos', minzoom: 13,
+                layout: { 'text-field': ['get', 'nome'], 'text-size': 12, 'text-offset': [0, 1.3], 'text-anchor': 'top', 'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'] },
+                paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.3 }
+            });
+        } catch (err) { console.warn('Rótulos dos pontos indisponíveis', err); }
+    }
+
+    // Rótulos com o nome das fazendas
+    if (!map.getSource('rotulos')) try {
+        map.addSource('rotulos', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: fazendas.filter(f => geojsons[f.id] && !ehPonto(f.id)).map(f => ({
+                    type: 'Feature',
+                    properties: { nome: f.nome.replace('Fazenda ', ''), ...(dadosGerais.filtro_etapa ? { [dadosGerais.filtro_etapa.campo]: f[dadosGerais.filtro_etapa.campo] } : {}) },
+                    geometry: turf.pointOnFeature(geojsons[f.id]).geometry
+                }))
+            }
+        });
+        map.addLayer({
+            id: 'rotulos', type: 'symbol', source: 'rotulos', minzoom: fazendas.length > 8 ? 12 : 0,
+            layout: { 'text-field': ['get', 'nome'], 'text-size': 13, 'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'], 'text-max-width': 10 },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.5 }
+        });
+    } catch (err) {
+        console.warn('Rótulos não disponíveis neste estilo de mapa', err);
+    }
+    (dadosGerais.camadas_opcionais || []).filter(o => opcionaisAtivas.has(o.id)).forEach(desenharOpcional);
+    destacarSelecionada();
+    aplicarFiltroMapa();
+    aplicarVisibilidadeCamadas();
+    Object.keys(catOcultas).forEach(aplicarCategorias);
+}
+
+function destacarSelecionada() {
+    fazendas.forEach(f => {
+        if (!map.getLayer(`${f.id}-line`)) return;
+        const ativa = selecionada === f.id;
+        const apagada = selecionada && !ativa;
+        map.setPaintProperty(`${f.id}-line`, 'line-width', ativa ? 4.5 : 2.5);
+        map.setPaintProperty(`${f.id}-line`, 'line-opacity', apagada ? 0.5 : 1);
+        map.setPaintProperty(`${f.id}-fill`, 'fill-opacity', ativa ? 0.3 : (apagada ? 0.08 : 0.18));
+    });
+}
+
+function enquadrarTodas() {
+    const todas = { type: 'FeatureCollection', features: fazendas.filter(f => geojsons[f.id] && naEtapa(f)).flatMap(f => geojsons[f.id].features) };
+    if (!todas.features.length) {
+        const c = camadas.find(x => x.destaque) || camadas[0];
+        if (c && camadasData[c.id]) todas.features = camadasData[c.id].features;
+    }
+    if (todas.features.length) map.fitBounds(boundsDe(todas), { padding: 50, duration: 800, maxZoom: 14 });
+}
+
+function selecionarFazenda(id, voar) {
+    selecionada = id;
+    renderFazendas();
+    destacarSelecionada();
+    if (id && voar && geojsons[id]) {
+        map.fitBounds(boundsDe(geojsons[id]), { padding: 60, duration: 900, maxZoom: 15 });
+    }
+    if (id) {
+        const card = document.querySelector(`.farm[data-id="${id}"]`);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function popupHtml(f) {
+    const cont = contarStatus(f.adequacoes);
+    const inf = f.info || {};
+    return `<div class="popup">
+        <h3><span class="swatch" style="background:${f.cor}"></span>${esc(f.nome)}</h3>
+        ${f.situacao ? `<span class="status-badge" style="background:${f.cor}">${esc(f.situacao)}</span>` : ''}
+        ${inf['Etapa'] ? `<p><strong>Etapa:</strong> ${esc(inf['Etapa'])}${f.data_visita ? ` · visita em ${esc(f.data_visita)}` : ''}</p>` : ''}
+        ${f.area_ha ? `<p><strong>Área declarada:</strong> ${fmt(f.area_ha, 2)} ha</p>` : ''}
+        ${f.car ? `<p><strong>CAR:</strong> <span class="mono">${esc(f.car)}</span></p>` : ''}
+        ${(inf['Resultado da visita'] || inf['Andamento'] || inf['Obra']) ? `<p>${esc(inf['Resultado da visita'] || inf['Andamento'] || inf['Obra'])}</p>` : ''}
+        ${galeriaHtml(f, 4)}
+        ${f.adequacoes.length ? `<p><strong>Adequações:</strong> ${f.adequacoes.length}
+           (${cont['Concluída']} concluídas, ${cont['Em andamento']} em andamento, ${cont['Pendente']} pendentes)</p>
+        <div class="mini-progress">${barraProgresso(cont, f.adequacoes.length)}</div>` : ''}
+        ${documentosDa(f).map(d => `<button type="button" class="doc-btn" onclick="abrirDocumento('${esc(d.titulo)}', '${esc(d.arquivo)}')">📄 ${esc(d.titulo)}</button>`).join('')}
+        <button type="button" class="btn btn-mini ver-ficha" data-fazenda="${esc(f.id)}">Ver ficha completa no painel</button>
+    </div>`;
+}
+
+map.on('click', (e) => {
+    if ((dadosGerais.camadas_opcionais || []).some(o => o.prioridade && opcionaisAtivas.has(o.id)) && popupOpcional(e, true)) return;
+    if (map.getLayer('pontos')) {
+        const pt = map.queryRenderedFeatures(e.point, { layers: ['pontos'] });
+        if (pt.length) {
+            const p = pt[0].properties;
+            new mapboxgl.Popup({ maxWidth: '280px' }).setLngLat(pt[0].geometry.coordinates)
+                .setHTML(`<div class="popup"><h3>${esc(p.nome)}</h3><p>${esc(p.descricao)}</p>${docBotao(p.doc_titulo, p.doc_arquivo)}</div>`).addTo(map);
+            selecionarFazenda(p.fazenda, false);
+            return;
+        }
+    }
+    const camIds = (window.camadasExtras || []).filter(id => map.getLayer(id));
+    if (camIds.length) {
+        const hit = map.queryRenderedFeatures(e.point, { layers: camIds });
+        if (hit.length) {
+            const p = hit[0].properties;
+            const c = (window.camadasCfg || []).find(x => `cam-${x.id}` === hit[0].layer.id) || {};
+            const badge = c.cor_por && p[c.cor_por]
+                ? `<span class="status-badge" style="background:${(c.cores || {})[p[c.cor_por]] || '#777'}">${esc(p[c.cor_por])}</span>` : '';
+            // Resumo em texto (portaria, validade e finalidade) + demais campos em lista
+            const resumo = p.Portaria
+                ? `<p class="popup-resumo"><strong>Portaria ${esc(p.Portaria)}</strong><br>
+                   ${p.Validade ? `Validade: <strong>${esc(p.Validade)}</strong><br>` : ''}
+                   ${p.Finalidade ? `Finalidade: ${esc(p.Finalidade)}` : ''}</p>` : '';
+            const jaNoResumo = p.Portaria ? ['Portaria', 'Validade', 'Finalidade'] : [];
+            const tabela = camposDe(c, p).filter(k => !jaNoResumo.includes(k))
+                .map(k => `<dt>${esc(k)}</dt><dd>${esc(p[k])}</dd>`).join('');
+            new mapboxgl.Popup({ maxWidth: '320px' }).setLngLat(hit[0].geometry.type === 'Point' ? hit[0].geometry.coordinates : e.lngLat)
+                .setHTML(`<div class="popup"><h3>${esc(p.nome)}</h3>${badge}
+                    ${resumo}
+                    ${p.descricao ? `<p>${esc(p.descricao)}</p>` : ''}
+                    ${tabela ? `<dl class="popup-dl">${tabela}</dl>` : ''}
+                    ${(() => { const fz = p.doc_arquivo && fazendas.find(x => (x.documentos || []).some(d => d.arquivo === p.doc_arquivo)); return fz ? galeriaHtml(fz, 4) : ''; })()}
+                    ${docBotao(p.doc_titulo, p.doc_arquivo)}${docBotao(p.hist_titulo, p.hist_arquivo)}</div>`).addTo(map);
+            return;
+        }
+    }
+    const camadas = fazendas.map(f => `${f.id}-fill`).filter(id => map.getLayer(id));
+    const hits = camadas.length ? map.queryRenderedFeatures(e.point, { layers: camadas }) : [];
+    // Com o preenchimento oculto, ainda permite clicar dentro do perímetro
+    let id = hits.length ? hits[0].properties.id : null;
+    if (!id) {
+        const pt = turf.point([e.lngLat.lng, e.lngLat.lat]);
+        const f = fazendas.find(f => geojsons[f.id] && !ehPonto(f.id) && naEtapa(f) && turf.booleanPointInPolygon(pt, geojsons[f.id].features[0]));
+        id = f ? f.id : null;
+    }
+    if (!id || !ligada('propriedades')) { popupOpcional(e); return; }
+    const f = fazendas.find(x => x.id === id);
+    new mapboxgl.Popup({ maxWidth: '300px' }).setLngLat(e.lngLat).setHTML(popupHtml(f)).addTo(map);
+    selecionarFazenda(id, false);
+});
+
+map.on('mousemove', (e) => {
+    const camadas = fazendas.map(f => `${f.id}-fill`).filter(id => map.getLayer(id));
+    if (map.getLayer('pontos')) camadas.push('pontos');
+    window.camadasExtras?.forEach(id => { if (map.getLayer(id)) camadas.push(id); });
+    const over = camadas.length && map.queryRenderedFeatures(e.point, { layers: camadas }).length > 0;
+    map.getCanvas().style.cursor = over ? 'pointer' : '';
+});
+
+// Recoloca as camadas sempre que o estilo do mapa muda
+map.on('style.load', () => { if (fazendas.length) adicionarCamadas(); });
+
+// ---------- controles ----------
+document.querySelectorAll('button[data-style]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-style]').forEach(b => b.classList.toggle('active', b === btn));
+        map.setStyle(ESTILOS[btn.dataset.style] || btn.dataset.style);
+    });
+});
+document.getElementById('toggleFill')?.addEventListener('change', (e) => {
+    mostrarPreenchimento = e.target.checked;
+    fazendas.forEach(f => {
+        if (map.getLayer(`${f.id}-fill`)) map.setLayoutProperty(`${f.id}-fill`, 'visibility', mostrarPreenchimento && naEtapa(f) ? 'visible' : 'none');
+    });
+});
+document.getElementById('centerMap').addEventListener('click', () => { selecionarFazenda(null, false); enquadrarTodas(); });
+
+const toggle = document.getElementById('panelToggle');
+toggle.addEventListener('click', () => {
+    const fechado = document.body.classList.toggle('panel-closed');
+    toggle.setAttribute('aria-expanded', String(!fechado));
+    setTimeout(() => map.resize(), 250);
+});
+
+// ---------- carregamento ----------
+// ---------- painel do clima (gráficos em SVG, sem bibliotecas) ----------
+function svgSerie(serie, campo, { tipo = 'barra', cor = '#215c4c', altura = 120, unidade = '', tendencia = false } = {}) {
+    const W = 300, H = altura, m = { e: 30, d: 6, t: 8, b: 18 };
+    const xs = serie.map(s => s.ano), ys = serie.map(s => s[campo]);
+    const ymin = tipo === 'barra' ? Math.min(0, Math.floor(Math.min(...ys) * 1.08)) : Math.floor(Math.min(...ys) - 0.3), ymax = Math.ceil(Math.max(...ys) * (tipo === 'barra' ? 1.08 : 1) + (tipo === 'barra' ? 0 : 0.3));
+    const X = i => m.e + (i + 0.5) * (W - m.e - m.d) / xs.length, Y = v => H - m.b - (v - ymin) / (ymax - ymin || 1) * (H - m.t - m.b);
+    const bw = Math.max(1.5, (W - m.e - m.d) / xs.length - 1.2);
+    let corpo = '';
+    if (tipo === 'barra') corpo = ys.map((v, i) => `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${Y(Math.max(v, 0)).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.abs(Y(0) - Y(v)).toFixed(1)}" fill="${v < 0 ? '#e57373' : cor}" rx="1"><title>${xs[i]}: ${v}${unidade}</title></rect>`).join('');
+    else corpo = `<polyline fill="none" stroke="${cor}" stroke-width="2" points="${ys.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')}"/>` + ys.map((v, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.4" fill="${cor}"><title>${xs[i]}: ${v}${unidade}</title></circle>`).join('');
+    if (tendencia) {
+        const n = xs.length, mx = (n - 1) / 2, my = ys.reduce((a, b) => a + b, 0) / n;
+        const b = ys.reduce((a, y, i) => a + (i - mx) * (y - my), 0) / ys.reduce((a, _, i) => a + (i - mx) ** 2, 0);
+        corpo += `<line x1="${X(0)}" y1="${Y(my - b * mx)}" x2="${X(n - 1)}" y2="${Y(my + b * (n - 1 - mx))}" stroke="#d84315" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    }
+    const eixoY = (ymin < 0 ? [ymin, 0, ymax] : [ymin, (ymin + ymax) / 2, ymax]).map(v => `<text x="${m.e - 4}" y="${Y(v) + 3}" text-anchor="end" class="ax">${Number.isInteger(v) ? v : v.toFixed(1)}</text><line x1="${m.e}" x2="${W - m.d}" y1="${Y(v)}" y2="${Y(v)}" class="gr"/>`).join('');
+    const eixoX = xs.map((a, i) => (a % 10 === 0 || i === xs.length - 1) ? `<text x="${X(i)}" y="${H - 4}" text-anchor="middle" class="ax">${a}</text>` : '').join('');
+    return `<svg viewBox="0 0 ${W} ${H}" class="graf" role="img">${eixoY}${corpo}${eixoX}</svg>`;
+}
+function svgRosa(rosa) {
+    const R = 70, c = 90, cores = ['#c8e6c9', '#81c784', '#388e3c', '#1b5e20'];
+    const max = Math.max(...rosa.setores.map(s => rosa.percentual[s].reduce((a, b) => a + b, 0)));
+    let g = [0.33, 0.66, 1].map(f => `<circle cx="${c}" cy="${c}" r="${R * f}" class="gr" fill="none"/>`).join('');
+    rosa.setores.forEach((s, k) => {
+        const ang = (k * 45 - 90) * Math.PI / 180, larg = 16 * Math.PI / 180; let r0 = 0;
+        rosa.percentual[s].forEach((v, f) => {
+            const r1 = r0 + v / max * R;
+            const p = (r, a) => `${(c + r * Math.cos(a)).toFixed(1)},${(c + r * Math.sin(a)).toFixed(1)}`;
+            if (v > 0) g += `<path d="M${p(r0, ang - larg)} L${p(r1, ang - larg)} A${r1},${r1} 0 0 1 ${p(r1, ang + larg)} L${p(r0, ang + larg)} A${r0},${r0} 0 0 0 ${p(r0, ang - larg)}Z" fill="${cores[f]}"><title>${s} · ${rosa.faixas_kmh[f]} km/h: ${v}% dos dias</title></path>`;
+            r0 = r1;
+        });
+        g += `<text x="${c + (R + 12) * Math.cos(ang)}" y="${c + (R + 12) * Math.sin(ang) + 4}" text-anchor="middle" class="ax b">${s}</text>`;
+    });
+    const leg = rosa.faixas_kmh.map((f, i) => `<span><i style="background:${cores[i]}"></i>${f}</span>`).join('');
+    return `<svg viewBox="0 0 180 180" class="graf rosa">${g}</svg><div class="leg-rosa">${leg} <small>km/h (vento máximo do dia)</small></div>`;
+}
+const medPer = (s, c, a0, a1) => { const v = s.filter(x => x.ano >= a0 && x.ano <= a1).map(x => x[c]); return v.reduce((a, b) => a + b, 0) / v.length; };
+async function renderClima() {
+    const card = document.getElementById('cardClima');
+    if (!card || !dadosGerais.painel_clima) return;
+    let d; try { d = await (await fetch(dadosGerais.painel_clima, { cache: 'no-cache' })).json(); } catch { return; }
+    const r = d.resumo, s = d.serie, ult = s[s.length - 1].ano, ini = s[0].ano;
+    const k = (campo) => r[`${campo}_${ult - 9}_${ult}`];
+    card.hidden = false;
+    card.innerHTML = `<h2>O clima de Londrina está mudando</h2>
+        <p class="hint">Série ${r.periodo} · ${esc(r.fonte)}</p>
+        <div class="clima-kpis">
+            <div><b>+${fmt(r.tendencia_temp_decada, 2)} °C</b><span>por década na temperatura média</span></div>
+            <div><b>${fmt(r.dias32_1981_1990, 0)} → ${fmt(k('dias32'), 0)}</b><span>dias/ano com máxima ≥ 32 °C (1981–90 → ${ult - 9}–${String(ult).slice(2)})</span></div>
+            <div><b>${fmt(medPer(s, 'noites_quentes', ini, ini + 9), 0)} → ${fmt(medPer(s, 'noites_quentes', ult - 9, ult), 0)}</b><span>noites quentes por ano (mínima ≥ 22 °C)</span></div>
+        </div>
+        <h3>Temperatura média anual (°C)</h3>${svgSerie(s, 'temp_media', { tipo: 'linha', cor: '#d84315', unidade: ' °C', tendencia: true })}
+        <h3>Dias de calor (máxima ≥ 32 °C)</h3>${svgSerie(s, 'dias_32', { cor: '#ef6c00', unidade: ' dias', tendencia: true })}
+        <h3>Dias de chuva forte (≥ 50 mm)</h3>${svgSerie(s, 'dias_chuva_50', { cor: '#0277bd', unidade: ' dias', altura: 100 })}
+        <h3>Dias com rajadas ≥ 60 km/h</h3>${svgSerie(s, 'dias_rajada_60', { cor: '#5e35b1', unidade: ' dias', altura: 100 })}
+        <h3>De onde vem o vento (${esc(d.rosa_ventos.periodo)})</h3>${svgRosa(d.rosa_ventos)}
+        <details class="clima-top"><summary>Maiores chuvas em um dia (${ini}–${ult})</summary><ol>${d.maiores_chuvas.map(c => `<li>${c.data.split('-').reverse().join('/')} – <b>${fmt(c.mm, 1)} mm</b></li>`).join('')}</ol></details>
+        ${s[0].geadas !== undefined ? `<h2 class="clima-campo">E no campo?</h2>
+        <p class="hint">Indicadores agroclimáticos para a zona rural de Londrina (mesma série).</p>
+        <div class="clima-kpis">
+            <div><b>${fmt(r.geadas_1981_1990, 1)} → ${fmt(k('geadas'), 1)}</b><span>dias/ano com risco de geada (mínima ≤ 3 °C)</span></div>
+            <div><b>${r.balanco_1981_1990 > 0 ? '+' : ''}${fmt(r.balanco_1981_1990, 0)} → ${k('balanco') > 0 ? '+' : ''}${fmt(k('balanco'), 0)} mm</b><span>balanço hídrico médio do ano (chuva − evapotranspiração)</span></div>
+            <div><b>${fmt(r.dias35safra_1981_1990, 1)} → ${fmt(k('dias35safra'), 1)}</b><span>dias ≥ 35 °C na safra (estresse térmico nas lavouras)</span></div>
+        </div>
+        <h3>Dias com risco de geada (mínima ≤ 3 °C)</h3>${svgSerie(s, 'geadas', { cor: '#4fc3f7', unidade: ' dias', altura: 100, tendencia: true })}
+        <h3>Maior veranico da safra de verão (dias seguidos sem chuva)</h3>${svgSerie(s, 'veranico_max', { cor: '#a1887f', unidade: ' dias', altura: 100, tendencia: true })}
+        <h3>Balanço hídrico anual (chuva − evapotranspiração, mm)</h3><p class="hint">Em vermelho, anos em que a evaporação potencial superou a chuva.</p>${svgSerie(s, 'balanco_hidrico', { cor: '#26a69a', unidade: ' mm', altura: 110, tendencia: true })}
+        <h3>Chuvas erosivas (≥ 30 mm em um dia)</h3>${svgSerie(s, 'dias_chuva_30', { cor: '#6d4c41', unidade: ' dias', altura: 100, tendencia: true })}` : ''}
+        <p class="hint">Linha tracejada = tendência. Reanálise climática (modelo + observações), com resolução de ~25 km: mostra a tendência regional; valores de estações locais podem diferir.</p>`;
+}
+async function renderRanking() {
+    const card = document.getElementById('cardRanking'), cfg = dadosGerais.ranking_bairros;
+    if (!card || !cfg) return;
+    let g; try { g = await (await fetch(cfg.arquivo, { cache: 'no-cache' })).json(); } catch { return; }
+    const fs = g.features, campo = cfg.campo, dif = cfg.campo_diferenca;
+    const item = (f, i, quente) => `<li><button type="button" class="rk" data-i="${i}"><span class="rk-n">${esc(f.properties.nome)}</span>
+        <span class="rk-v ${quente ? 'q' : 'f'}">${fmt(f.properties[campo], 1)} °C <small>(${f.properties[dif] > 0 ? '+' : ''}${fmt(f.properties[dif], 1)})</small></span></button></li>`;
+    card.hidden = false;
+    card.innerHTML = `<h2>${esc(cfg.titulo)}</h2><p class="hint">${esc(cfg.texto)}</p>
+        <h3>Mais quentes</h3><ol class="ranking">${fs.slice(0, 10).map((f, i) => item(f, i, true)).join('')}</ol>
+        <h3>Mais frescos</h3><ol class="ranking" start="${fs.length - 4}">${fs.slice(-5).map((f, i) => item(f, fs.length - 5 + i, false)).join('')}</ol>`;
+    card.querySelectorAll('.rk').forEach(b => b.addEventListener('click', () => {
+        const f = fs[+b.dataset.i];
+        map.fitBounds(boundsDe({ type: 'FeatureCollection', features: [f] }), { padding: 80, duration: 900, maxZoom: 13.6 });
+        const o = (dadosGerais.camadas_opcionais || []).find(x => x.id === cfg.camada);
+        const bt = o && document.querySelector(`.camada-row[data-id="${o.id}"]`);
+        if (bt && !opcionaisAtivas.has(o.id)) bt.click();
+    }));
+}
+async function renderRural() {
+    const card = document.getElementById('cardRural'), cfg = dadosGerais.painel_rural;
+    if (!card || !cfg) return;
+    let g, r; try { [g, r] = await Promise.all([cfg.arquivo, cfg.resumo].map(async u => (await fetch(u, { cache: 'no-cache' })).json())); } catch { return; }
+    const fs = g.features, cor = { Alta: '#c62828', 'Média': '#ef6c00', Baixa: '#2e7d32' };
+    card.hidden = false;
+    card.innerHTML = `<h2>${esc(cfg.titulo)}</h2><p class="hint">${esc(cfg.texto)}</p>
+        <div class="clima-kpis">
+            <div><b>${fmt(r.vegetacao_nativa_pct, 1)}%</b><span>de vegetação nativa na zona rural</span></div>
+            <div><b>${fmt(r.relevo_forte_pct, 1)}%</b><span>em relevo forte ondulado (≥ 20%) – mais erosão com chuva forte</span></div>
+            <div><b>${fmt(r.varzeas_pct, 1)}%</b><span>em várzeas baixas (até 2 m acima do córrego) – alagam e encharcam primeiro</span></div>
+        </div>
+        <h3>Microbacias mais vulneráveis</h3>
+        <ol class="ranking">${(() => { const vistos = new Set(); return fs.map((f, i) => [f, i]).filter(([f]) => { const n = f.properties.nome; if (vistos.has(n) || f.properties['Área rural na microbacia (ha)'] < 150) return false; vistos.add(n); return true; }).slice(0, 10); })().map(([f, i]) => `<li><button type="button" class="rk" data-i="${i}"><span class="rk-n">${esc(f.properties.nome || f.properties.Rio || 'Microbacia')}</span>
+        <span class="rk-v" style="color:${cor[f.properties['Vulnerabilidade climática']]}">${f.properties['Índice (0–100)']} <small>(${esc(f.properties['Vulnerabilidade climática'])})</small></span></button></li>`).join('')}</ol>
+        <p class="hint">Índice 0–100: relevo declivoso (40%), pouca vegetação nativa (35%) e várzeas baixas (25%); classes alta/média/baixa = terços das microbacias do município. Lista com microbacias de mais de 150 ha. Indica onde chuvas intensas e secas tendem a causar mais erosão, assoreamento e perdas.</p>`;
+    card.querySelectorAll('.rk').forEach(b => b.addEventListener('click', () => {
+        const f = fs[+b.dataset.i];
+        const bt = document.querySelector(`.camada-row[data-id="${cfg.camada}"]`);
+        if (bt && !opcionaisAtivas.has(cfg.camada)) bt.click();
+        setTimeout(() => map.fitBounds(boundsDe({ type: 'FeatureCollection', features: [f] }), { padding: 80, duration: 900, maxZoom: 13.5 }), 300);
+    }));
+}
+async function renderZarc() {
+    const card = document.getElementById('cardZarc'), cfg = dadosGerais.painel_zarc;
+    if (!card || !cfg) return;
+    let z; try { z = await (await fetch(cfg.arquivo, { cache: 'no-cache' })).json(); } catch { return; }
+    const nomes = Object.keys(z.culturas), MES = 'JFMAMJJASOND';
+    const corR = { 20: '#1b7a3d', 30: '#9ccc65', 40: '#ffb74d' };
+    const est = { cult: nomes.includes('Soja') ? 'Soja' : nomes[0], ciclo: '', nm: '' };
+    const opts = (vals, sel) => vals.map(v => `<option${v === sel ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    const uniq = a => [...new Set(a)];
+    function desenhar() {
+        const c = z.culturas[est.cult], ciclos = uniq(c.linhas.map(l => l.ciclo)).sort(), nms = uniq(c.linhas.map(l => l.nm)).filter(Boolean).sort();
+        if (!ciclos.includes(est.ciclo)) est.ciclo = ciclos[Math.min(1, ciclos.length - 1)];
+        if (nms.length && !nms.includes(est.nm)) est.nm = nms[nms.length - 1]; if (!nms.length) est.nm = '';
+        const linhas = c.linhas.filter(l => l.ciclo === est.ciclo && l.nm === est.nm).sort((a, b) => a.solo.localeCompare(b.solo, 'pt', { numeric: true }));
+        const usados = linhas.reduce((u, l) => u.map((x, i) => x || l.dec[i] > 0), Array(36).fill(false));
+        // janela pode atravessar a virada do ano (ex.: milho safrinha dez→mar): começa logo após o maior intervalo sem plantio
+        let melhor = { ini: 0, n: 0 };
+        for (let i = 0; i < 36; i++) { if (usados[i]) continue; let n = 0; while (n < 36 && !usados[(i + n) % 36]) n++; if (n > melhor.n) melhor = { ini: i, n }; }
+        const idx = [];
+        if (melhor.n === 0) for (let i = 0; i < 36; i++) idx.push(i);
+        else { const ini = (melhor.ini + melhor.n - 1) % 36, tam = Math.min(36, 36 - melhor.n + 2); for (let k = 0; k < tam; k++) idx.push((ini + k) % 36); }
+        const nomeDec = i => `${['1º', '2º', '3º'][i % 3]} decêndio de ${['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][Math.floor(i / 3)]}`;
+        const cab = idx.map(i => `<th>${i % 3 === 0 ? MES[i / 3] : ''}</th>`).join('');
+        const corpo = linhas.map(l => `<tr><th>${esc(l.solo)}</th>${idx.map(i => `<td style="background:${corR[l.dec[i]] || '#eceff1'}" title="${nomeDec(i)}: ${l.dec[i] ? 'risco ' + l.dec[i] + '%' : 'não indicado'}"></td>`).join('')}</tr>`).join('');
+        const h = z.historico[est.cult] || [];
+        card.querySelector('.zarc-corpo').innerHTML = `
+            <div class="zarc-sel"><label>Cultura<select data-k="cult">${opts(nomes, est.cult)}</select></label>
+            <label>Ciclo<select data-k="ciclo">${opts(ciclos, est.ciclo)}</select></label>
+            ${nms.length ? `<label>Nível de manejo<select data-k="nm">${opts(nms, est.nm)}</select></label>` : ''}</div>
+            <div class="zarc-tab"><table><thead><tr><th></th>${cab}</tr></thead><tbody>${corpo}</tbody></table></div>
+            <ul class="zarc-leg"><li><i style="background:${corR[20]}"></i>risco 20%</li><li><i style="background:${corR[30]}"></i>30%</li><li><i style="background:${corR[40]}"></i>40%</li><li><i style="background:#eceff1"></i>não indicado</li></ul>
+            <p class="hint">Safra ${esc(c.safra)} · ${esc(c.portaria)}. Linhas = tipo de solo${linhas.some(l => l.solo.startsWith('AD')) ? ' pela água disponível (AD1 retém menos água … AD6 retém mais)' : ''}. ${nms.length ? 'NM1 a NM4 = níveis de manejo do solo, do básico ao mais conservacionista. ' : ''}Passe o dedo/mouse sobre a célula para ver o decêndio.</p>
+            ${h.length > 1 ? `<details class="clima-top"><summary>Como a janela mudou desde ${esc(h[0].safra)}</summary>
+            <table class="zarc-hist"><tr><th>Safra</th><th>decêndios com risco 20%</th><th>decêndios indicados</th></tr>${h.map(x => `<tr><td>${esc(x.safra)}</td><td>${x.dec20}</td><td>${x.decs}</td></tr>`).join('')}</table>
+            <p class="hint">Melhor situação entre solos e ciclos em cada safra. Mudanças podem vir de revisões do método do ZARC (novas classes de solo em 2023/24 e níveis de manejo em 2025/26), não só do clima.</p></details>` : ''}`;
+        card.querySelectorAll('.zarc-sel select').forEach(s => s.addEventListener('change', () => { est[s.dataset.k] = s.value; desenhar(); }));
+    }
+    card.hidden = false;
+    card.innerHTML = `<h2>${esc(cfg.titulo)}</h2><p class="hint">${esc(cfg.texto)}</p><div class="zarc-corpo"></div>`;
+    desenhar();
+}
+function renderImpactos() {
+    const card = document.getElementById('cardImpactos'), cfg = dadosGerais.impactos;
+    if (!card || !cfg) return;
+    card.hidden = false;
+    card.innerHTML = `<h2>${esc(cfg.titulo || 'Registre um impacto climático')}</h2>
+        <p>${esc(cfg.texto || '')}</p>
+        <ul class="imp-tipos">${(cfg.tipos || []).map(t => `<li><i style="background:${t.cor}"></i>${esc(t.nome)}</li>`).join('')}</ul>
+        ${cfg.formulario ? `<a class="btn btn-solid" href="${esc(cfg.formulario)}" target="_blank" rel="noopener">Enviar um registro ↗</a>` : ''}
+        ${cfg.email ? `<a class="btn" href="mailto:${esc(cfg.email)}?subject=${encodeURIComponent('Registro de impacto climático – Londrina')}">Enviar por e-mail</a>` : ''}
+        <p class="hint">${esc(cfg.aviso || '')}</p>`;
+}
+async function iniciar() {
+    const resp = await fetch('data/fazendas.json', { cache: 'no-cache' });
+    const dados = await resp.json();
+    const cliente = dados.cliente || {};
+    document.getElementById('clienteNome').textContent = cliente.nome || 'Mapa interativo';
+    document.getElementById('clienteSub').textContent = cliente.subtitulo || '';
+    if (cliente.selo) {
+        const selo = document.createElement('span');
+        selo.className = 'demo-badge';
+        selo.textContent = cliente.selo;
+        document.getElementById('clienteSub').after(selo);
+    }
+    if (cliente.nome) document.title = `${cliente.nome} – Mapa Interativo`;
+    if (cliente.centro) map.jumpTo({ center: cliente.centro, zoom: cliente.zoom || 12 });
+    fazendas = dados.fazendas.map((f, i) => ({ ...f, cor: f.cor || PALETA[i % PALETA.length] }));
+    if (!fazendas.length) {
+        if (!dados.busca_camada) document.getElementById('farmList').innerHTML = '<p class="hint">Mapa em preparação. Os dados das propriedades serão incluídos em breve.</p>';
+    }
+    if (dados.atualizado_em) {
+        const [a, m, d] = dados.atualizado_em.split('-');
+        document.getElementById('updatedAt').textContent = `${d}/${m}/${a}`;
+    }
+    await Promise.all(fazendas.map(async f => {
+        if (!f.arquivo) return;
+        try {
+            const r = await fetch(f.arquivo, { cache: 'no-cache' });
+            geojsons[f.id] = await r.json();
+        } catch (err) {
+            console.error(`Não foi possível carregar ${f.arquivo}`, err);
+        }
+    }));
+    dadosGerais = dados;
+    renderPrograma(dados.programa);
+    if (dados.lista_titulo) document.getElementById('listaTitulo').textContent = dados.lista_titulo;
+    camadas = dados.camadas || [];
+    window.camadasExtras = camadas.map(c => `cam-${c.id}`);
+    window.camadasCfg = camadas;
+    await Promise.all(camadas.map(async c => {
+        try { camadasData[c.id] = await (await fetch(c.arquivo, { cache: 'no-cache' })).json(); }
+        catch (err) { console.error(`Não foi possível carregar ${c.arquivo}`, err); }
+    }));
+    renderResumo();
+    renderFiltroEtapa();
+    renderTermos();
+    renderLicencas();
+    renderClima();
+    renderRanking(); renderRural(); renderZarc();
+    renderImpactos();
+    if (fazendas.length || dados.busca_camada) document.getElementById('cardLista')?.removeAttribute('hidden');
+    renderModosCor();
+    renderIndicadoresExternos();
+    renderOpcionais();
+    if (dados.cores_por_municipio) {
+        modoCor = 'municipio';
+        const seg = document.getElementById('modoCor');
+        if (seg) {
+            seg.hidden = false;
+            seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+                modoCor = b.dataset.modo;
+                seg.querySelectorAll('button').forEach(o => o.classList.toggle('active', o === b));
+                aplicarCores();
+                renderLegenda();
+            }));
+        }
+    }
+    renderFazendas();
+    renderLegenda();
+    renderBuscaCamada();
+    renderPrazos(dados.prazos);
+    prepararCartoes();
+    const pronto = () => { adicionarCamadas(); enquadrarTodas(); map.once('idle', () => document.getElementById('carregando')?.remove()); };
+    if (map.isStyleLoaded()) pronto(); else map.once('load', pronto);
+}
+iniciar();
+
+document.getElementById('farmSearch')?.addEventListener('input', (e) => {
+    filtroFazendas = semAcento(e.target.value.trim());
+    renderFazendas();
+});
+
+// ---------- cartões do painel recolhíveis ----------
+function prepararCartoes() {
+    let salvos = {};
+    try { salvos = JSON.parse(localStorage.getItem('cartoesFechados') || '{}'); } catch (e) {}
+    document.querySelectorAll('.sidebar .card').forEach((card, i) => {
+        const h = card.querySelector(':scope > h2');
+        if (!h || h.dataset.recolhe) return;
+        const chave = card.id || h.textContent.trim();
+        h.dataset.recolhe = '1';
+        h.classList.add('card-titulo');
+        h.setAttribute('role', 'button'); h.tabIndex = 0;
+        const alternar = () => {
+            const fechado = card.classList.toggle('fechado');
+            h.setAttribute('aria-expanded', !fechado);
+            salvos[chave] = fechado;
+            try { localStorage.setItem('cartoesFechados', JSON.stringify(salvos)); } catch (e) {}
+        };
+        h.addEventListener('click', alternar);
+        h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
+        if (salvos[chave]) card.classList.add('fechado');
+        h.setAttribute('aria-expanded', !card.classList.contains('fechado'));
+    });
+}
+setTimeout(prepararCartoes, 0);
+window.addEventListener('load', () => setTimeout(prepararCartoes, 500));
