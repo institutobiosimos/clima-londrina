@@ -1,0 +1,16 @@
+{
+ "intro": "Olá! Este é o Clima Londrina, a central de inteligência climática do Instituto Biosimos. Neste vídeo, você vai ver como usar o mapa e o que ele mostra sobre as mudanças do clima na cidade e no campo.",
+ "geral": "O mapa cobre todo o município de Londrina, com a área urbana e a zona rural. À esquerda fica o painel com os indicadores; à direita, o mapa com imagem de satélite recente.",
+ "resumo": "No topo do painel, três números resumem a situação. A temperatura média subiu cerca de um grau desde os anos oitenta. Os dias com máxima acima de trinta e dois graus passaram de oito para cerca de quarenta por ano. E a superfície do bairro mais quente fica mais de oito graus acima da do bairro mais fresco.",
+ "serie": "Mais abaixo, os gráficos mostram mais de quarenta anos de dados climáticos: temperatura, dias de calor, noites quentes, chuvas fortes e ventos. A linha tracejada indica a tendência ao longo do tempo.",
+ "calor": "Agora vamos ligar a camada de calor. Ela mostra a temperatura da superfície no verão, medida por satélite. As áreas em vermelho são as ilhas de calor, onde há mais asfalto, telhados e pouca vegetação.",
+ "ranking": "O ranking compara os bairros. Ao clicar em um bairro, o mapa aproxima e mostra a temperatura média, a diferença para a média da cidade e quanto de vegetação existe ali.",
+ "vegetacao": "A camada de vegetação mostra onde há árvores e áreas verdes. Repare como os bairros mais arborizados coincidem com as áreas mais frescas.",
+ "alagamento": "Já a camada de alagamento indica as áreas baixas, próximas aos córregos, que tendem a encher primeiro em chuvas intensas. As linhas azuis são a rede de drenagem natural do terreno.",
+ "campo": "O mapa também olha para o campo. Na seção E no campo, vemos indicadores para a agricultura: os dias acima de trinta e cinco graus durante a safra de verão aumentaram, e o balanço entre chuva e evaporação passou de positivo para negativo nos últimos anos.",
+ "rural": "O painel do território rural compara as microbacias da zona rural pelo relevo, pela vegetação nativa e pelas várzeas. Assim, dá para ver onde chuvas fortes e secas tendem a causar mais erosão e perdas.",
+ "declividade": "As camadas de declividade e de uso do solo ajudam a entender cada região: onde o terreno é mais inclinado e onde estão as lavouras, as pastagens e as matas.",
+ "zarc": "O calendário de plantio traz o Zoneamento Agrícola de Risco Climático, do Ministério da Agricultura. Escolha a cultura e o ciclo para ver, por tipo de solo, as épocas de plantio com menor risco em Londrina.",
+ "impactos": "Por fim, a população também participa. Se você presenciar um alagamento, uma queda de árvore ou um vendaval, envie o registro. Depois de conferido pela equipe, ele aparece no mapa.",
+ "fim": "Os dados são atualizados todos os meses. Clima Londrina, uma iniciativa do Instituto Biosimos. Obrigado por assistir!"
+}
