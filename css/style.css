@@ -568,3 +568,6 @@ table.ind tr.pos td { color: #1d6b3e; font-weight: 600; }
 .vento-ctrl { margin: 8px 0 4px; display: flex; flex-direction: column; gap: 6px; }
 .vento-ctrl .segmented { margin: 0; }
 #modoVento[hidden] { display: none !important; }
+.ar-est { display: flex; gap: 10px; align-items: center; margin: 8px 0 2px; font-size: .85rem; }
+.ar-badge { min-width: 40px; height: 40px; border-radius: 50%; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: .95rem; }
+.ar-vivo { font-size: .65rem; background: #c62828; color: #fff; border-radius: 8px; padding: 1px 6px; vertical-align: middle; margin-left: 4px; text-transform: uppercase; letter-spacing: .04em; }

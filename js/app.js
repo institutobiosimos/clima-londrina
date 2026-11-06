@@ -1389,6 +1389,88 @@ async function renderVento() {
         setTimeout(() => map.fitBounds(boundsDe({ type: 'FeatureCollection', features: [f] }), { padding: 70, duration: 900, maxZoom: 14 }), 300);
     }));
 }
+// ---------- qualidade do ar ----------
+const CLASSE_AR = [[40, 'Boa', '#2e7d32'], [80, 'Moderada', '#f9a825'], [120, 'Ruim', '#ef6c00'], [200, 'Muito ruim', '#c62828'], [1e9, 'Péssima', '#6a1b9a']];
+const classeAr = v => v == null ? ['Sem dados', '#9e9e9e'] : CLASSE_AR.find(c => v <= c[0]).slice(1);
+function svgHoras(pts, { cor = '#215c4c', altura = 90, unidade = '', limites = null } = {}) {
+    // pts: [{rot, v}] – linha simples com rótulos esparsos
+    const W = 300, H = altura, m = { e: 28, d: 6, t: 8, b: 16 }, ys = pts.map(p => p.v).filter(v => v != null);
+    if (!ys.length) return '<p class="hint">Sem dados.</p>';
+    const ymin = 0, ymax = Math.max(10, Math.ceil(Math.max(...ys) * 1.15));
+    const X = i => m.e + i * (W - m.e - m.d) / Math.max(1, pts.length - 1), Y = v => H - m.b - (v - ymin) / (ymax - ymin) * (H - m.t - m.b);
+    let d = '', on = false;
+    pts.forEach((p, i) => { if (p.v == null) { on = false; return; } d += `${on ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.v).toFixed(1)}`; on = true; });
+    const faixas = (limites || []).filter(([v]) => v < ymax).map(([v, c]) => `<line x1="${m.e}" x2="${W - m.d}" y1="${Y(v)}" y2="${Y(v)}" stroke="${c}" stroke-dasharray="3 3" stroke-width="1"/>`).join('');
+    const eixoY = [0, ymax / 2, ymax].map(v => `<text x="${m.e - 4}" y="${Y(v) + 3}" text-anchor="end" class="ax">${Math.round(v)}</text><line x1="${m.e}" x2="${W - m.d}" y1="${Y(v)}" y2="${Y(v)}" class="gr"/>`).join('');
+    const passo = Math.max(1, Math.round(pts.length / 6));
+    const eixoX = pts.map((p, i) => i % passo === 0 ? `<text x="${X(i)}" y="${H - 3}" text-anchor="middle" class="ax">${esc(p.rot)}</text>` : '').join('');
+    const pontos = pts.map((p, i) => p.v == null ? '' : `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="1.8" fill="${cor}"><title>${esc(p.tit || p.rot)}: ${p.v}${unidade}</title></circle>`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" class="graf" role="img">${eixoY}${faixas}<path d="${d}" fill="none" stroke="${cor}" stroke-width="2"/>${pontos}${eixoX}</svg>`;
+}
+const horaLocal = ms => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+async function renderAr() {
+    const card = document.getElementById('cardAr'), cfg = dadosGerais.painel_ar;
+    if (!card || !cfg) return;
+    card.hidden = false;
+    card.innerHTML = `<h2>${esc(cfg.titulo)}</h2><p class="hint">${esc(cfg.texto)}</p><div class="ar-corpo"><p class="hint">Carregando…</p></div>`;
+    // 1) estações do IAT – direto do serviço público; se falhar, usa a última coleta guardada
+    let reg = [], aoVivo = false;
+    try {
+        const u = cfg.iat + '?' + new URLSearchParams({ where: "estacao like '%LONDRINA%'", outFields: 'estacao,hora,iqa,qualidade,poluente,so2_iqa,mp2_5_iqa,temp,umid', returnGeometry: 'false', orderByFields: 'hora', f: 'json' });
+        const j = await (await fetch(u)).json();
+        reg = j.features.map(f => ({ ...f.attributes, ms: f.attributes.hora })); aoVivo = reg.length > 0;
+    } catch (e) { }
+    if (!aoVivo) try {
+        const ult = lerCSV(await (await fetch(cfg.historico, { cache: 'no-cache' })).text()).filter(x => x.estacao);
+        const fim = Math.max(...ult.map(x => Date.parse(x.data_hora_utc.replace('Z', ':00Z'))));
+        reg = ult.map(x => ({ ...x, ms: Date.parse(x.data_hora_utc.replace('Z', ':00Z')), iqa: x.iqa === '' ? null : +x.iqa, mp2_5_iqa: x.mp2_5_iqa === '' ? null : +x.mp2_5_iqa, so2_iqa: x.so2_iqa === '' ? null : +x.so2_iqa }))
+            .filter(x => x.ms > fim - 24 * 3600e3);
+    } catch (e) { }
+    const est = {}; reg.forEach(r => (est[r.estacao.trim()] = est[r.estacao.trim()] || []).push(r));
+    const NOMES = { LONDRINA: 'Centro (Rua Brasil)', 'LONDRINA UEL': 'UEL' };
+    const blocos = Object.entries(est).map(([e, rs]) => {
+        rs.sort((a, b) => a.ms - b.ms);
+        const ult = [...rs].reverse().find(r => r.iqa != null) || rs[rs.length - 1];
+        const [cl, cor] = classeAr(ult.iqa);
+        return `<div class="ar-est"><div class="ar-badge" style="background:${cor}">${ult.iqa ?? '–'}</div><div><b>${esc(NOMES[e] || e)}</b> · ${esc(cl)}<br>
+            <span class="hint">às ${horaLocal(ult.ms)} · poluente: ${esc((ult.poluente || '').trim() || '–')}</span></div></div>
+            ${svgHoras(rs.map(r => ({ rot: horaLocal(r.ms).slice(0, 2) + 'h', tit: horaLocal(r.ms), v: r.iqa })), { cor, limites: [[40, '#f9a825'], [80, '#ef6c00']] })}`;
+    }).join('');
+    // 2) modelo CAMS (Copernicus) – agora e próximas 48 h
+    let cams = '';
+    try {
+        const a = await (await fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=-23.31&longitude=-51.16&current=pm2_5,pm10,ozone,nitrogen_dioxide&hourly=pm2_5,ozone&forecast_days=2&timezone=America%2FSao_Paulo')).json();
+        const c = a.current, h = a.hourly, agora = Date.now();
+        const idx = h.time.map((t, i) => [t, i]).filter(([t]) => Date.parse(t + ':00-03:00') >= agora - 3600e3).slice(0, 48);
+        cams = `<h3>Previsão (modelo Copernicus CAMS)</h3>
+            <div class="clima-kpis"><div><b>${fmt(c.pm2_5, 0)}</b><span>µg/m³ de MP2,5 agora</span></div><div><b>${fmt(c.ozone, 0)}</b><span>µg/m³ de ozônio</span></div><div><b>${fmt(c.nitrogen_dioxide, 0)}</b><span>µg/m³ de NO₂</span></div></div>
+            <p class="hint">MP2,5 nas próximas 48 h (µg/m³; tracejado = limite diário da OMS, 15 µg/m³):</p>
+            ${svgHoras(idx.map(([t, i]) => ({ rot: t.slice(11, 13) + 'h', tit: t.replace('T', ' '), v: h.pm2_5[i] })), { cor: '#6d4c41', limites: [[15, '#c62828']], unidade: ' µg/m³' })}
+            <p class="hint">Modelo regional (≈ 10 km), útil onde não há estação – não substitui a medição.</p>`;
+    } catch (e) { }
+    // 3) NO₂ por satélite – médias anuais
+    let no2 = '';
+    try {
+        const s = (await (await fetch(cfg.no2, { cache: 'no-cache' })).json()).serie, anos = {};
+        s.forEach(x => { const a = +x.mes.slice(0, 4); (anos[a] = anos[a] || { ano: a, c: [], r: [] }); if (x.cidade != null) anos[a].c.push(x.cidade); if (x.rural != null) anos[a].r.push(x.rural); });
+        const ser = Object.values(anos).filter(a => a.c.length >= 6).map(a => ({ ano: a.ano, cidade: +(a.c.reduce((p, q) => p + q, 0) / a.c.length).toFixed(1), rural: +(a.r.reduce((p, q) => p + q, 0) / a.r.length).toFixed(1) }));
+        const ult = ser[ser.length - 1];
+        no2 = `<h3>NO₂ por satélite (Sentinel-5P)</h3>
+            <p class="hint">Dióxido de nitrogênio, ligado ao tráfego e à indústria. Em ${ult.ano}, a área urbana teve <b>${fmt(ult.cidade, 1)}</b> contra <b>${fmt(ult.rural, 1)}</b> µmol/m² na zona rural do sul do município (${fmt((ult.cidade / ult.rural - 1) * 100, 0)}% a mais).</p>
+            ${svgSerie(ser, 'cidade', { tipo: 'linha', cor: '#c62828', altura: 100, unidade: ' µmol/m²' })}
+            <p class="hint">Média anual na área urbana. Ligue a camada “NO₂ por satélite” para ver o norte do Paraná.</p>`;
+    } catch (e) { }
+    card.querySelector('.ar-corpo').innerHTML = `<button type="button" class="btn" id="btnArMapa">Ver as estações no mapa</button>
+        <h3>Estações do IAT em Londrina ${aoVivo ? '<span class="ar-vivo">ao vivo</span>' : ''}</h3>
+        ${blocos || '<p class="hint">Estações sem dados no momento.</p>'}
+        <p class="hint">Índice de qualidade do ar (IQAr) nas últimas 24 h: até 40 boa, 41–80 moderada, 81–120 ruim, 121–200 muito ruim, acima de 200 péssima. A estação do Centro mede SO₂ e MP2,5; a da UEL, MP2,5. Londrina não tem medição de ozônio, NO₂ nem MP10. Guardamos as medições todos os dias para formar um histórico.</p>
+        ${cams}${no2}`;
+    card.querySelector('#btnArMapa').addEventListener('click', () => {
+        const row = document.querySelector('.camada-row[data-id="ar-estacoes"]');
+        if (row && !opcionaisAtivas.has('ar-estacoes')) row.click();
+        map.flyTo({ center: [-51.177, -23.322], zoom: 12.6, duration: 1200 });
+    });
+}
 async function renderZarc() {
     const card = document.getElementById('cardZarc'), cfg = dadosGerais.painel_zarc;
     if (!card || !cfg) return;
@@ -1487,7 +1569,7 @@ async function iniciar() {
     renderTermos();
     renderLicencas();
     renderClima();
-    renderRanking(); renderRural(); renderZarc(); renderVento();
+    renderRanking(); renderRural(); renderZarc(); renderVento(); renderAr();
     renderImpactos();
     if (fazendas.length || dados.busca_camada) document.getElementById('cardLista')?.removeAttribute('hidden');
     renderModosCor();

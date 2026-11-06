@@ -27,7 +27,7 @@ MEDE = {'LONDRINA': 'SO₂, MP2,5, temperatura e umidade', 'LONDRINA UEL': 'MP2,
 feats = []
 for est, (f, a, t) in ultimo.items():
     feats.append({'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [f['geometry']['x'], f['geometry']['y']]},
-                  'properties': {'Estação': est.title().replace('Uel', 'UEL'), 'estacao': est, 'Local': a.get('localizacao'), 'Mede': MEDE.get(est, ''),
+                  'properties': {'nome': 'Estação de qualidade do ar – ' + ('Centro' if est == 'LONDRINA' else 'UEL' if est == 'LONDRINA UEL' else est.title()), 'Estação': est.title().replace('Uel', 'UEL'), 'estacao': est, 'Local': a.get('localizacao'), 'Mede': MEDE.get(est, ''),
                                  'Qualidade do ar (última hora)': (a.get('qualidade') or '').strip().capitalize(), 'Índice (IQAr)': a.get('iqa'),
                                  'Poluente que define o índice': (a.get('poluente') or '').strip(), 'Hora (UTC)': t, 'Fonte': 'IAT – rede de monitoramento automático'}})
 json.dump({'type': 'FeatureCollection', 'features': feats}, open('data/ar/estacoes.geojson', 'w'), ensure_ascii=False)
