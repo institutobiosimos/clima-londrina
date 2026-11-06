@@ -1,0 +1,29 @@
+Earth Engine OK: clima-londrina-github@biosimos-clima.iam.gserviceaccount.com
+imagens 2023: 1
+tentativa 0 0 0 Reprojection output too large (22793x24649 pixels).
+tentativa 1 0 0 Reprojection output too large (22793x24649 pixels).
+tentativa 2 0 0 Reprojection output too large (22793x24649 pixels).
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/ee/data.py", line 361, in _execute_cloud_call
+    return call.execute(num_retries=num_retries)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/googleapiclient/http.py", line 1018, in execute
+    raise HttpError(resp, content, uri=self.uri)
+googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/biosimos-clima/image:computePixels? returned "Reprojection output too large (22793x24649 pixels).". Details: "Reprojection output too large (22793x24649 pixels).">
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/runner/work/clima-londrina/clima-londrina/tools/ee_predios.py", line 38, in <module>
+    a = ee.data.computePixels(req); break
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/ee/data.py", line 908, in computePixels
+    data = _execute_cloud_call(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/ee/data.py", line 363, in _execute_cloud_call
+    raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ee.ee_exception.EEException: Reprojection output too large (22793x24649 pixels).
