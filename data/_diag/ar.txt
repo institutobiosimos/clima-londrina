@@ -1,39 +1,262 @@
-ITEM faf93ddb323f4dcf9fe2331bbee1e9c7 Web Experience | Monitoramento da Qualidade do AR | https://geopr.iat.pr.gov.br/portal/apps/experiencebuilder/experience?id=faf93ddb323f4dcf9fe2331bbee1e9c7
-ITEM 92ea742844ed407badb9d273dbf9b48f Web Map | Mapa Boletim das últimas 24h | 
-ITEM f42f8ec64e3448ef9836f7f2d8220621 Feature Service | boletim_ultimas_24h | https://geopr.iat.pr.gov.br/server/rest/services/Hosted/boletim_ultimas_24h/FeatureServer
-ITEM 46308780c4dd49a0869a1a56bd95dc6b None | None | None
-ITEM f1fbe5e9d7b343acabd986b4abfc83fc Web Map | Mapa Linha do tempo | 
-ITEM 05d87e9731b54884a9d3a514aa16bc0c Web Map | Mapa Estações IQAR | 
-item 6fe35b3cfe4e4866a8989436fda09deb ERRO Expecting value: line 1 column 1 (char 0)
-ITEM 3dac595ccf34489ba96c2694caa4bd51 Feature Service | Municípios do Estado do Paraná - Oficial | https://geopr.iat.pr.gov.br/server/rest/services/00_PUBLICACOES/municipios_pr_Oficial/FeatureServer
-ITEM a73a101847994c02a67a2e30a51888df None | None | None
-SERVIÇO https://geopr.iat.pr.gov.br/portal/apps/experiencebuilder/experience?id=faf93ddb323f4dcf9fe2331bbee1e9c7 ERRO Expecting value: line 1 column 1 (char 0)
+Hosted com termos de ar: ['Hosted/Assentamentos_CAR_Estado_Parana', 'Hosted/boletim_ultimas_24h', 'Hosted/CARGASPOLUIDORAS', 'Hosted/frequencia_vento', 'Hosted/historico_balneabilidade', 'Hosted/IQA_2026', 'Hosted/Ligar_Feições_para_Estação_de_Monitoramento_da_Qualidade_do_Ar_visualização', 'Hosted/Monitora_PRAD_visualização', 'Hosted/Qualidade_Agua_SISAGUA', 'Hosted/qualidade_agua']
 
-SERVIÇO https://geopr.iat.pr.gov.br/server/rest/services/00_PUBLICACOES/municipios_pr_Oficial/FeatureServer | 
-  CAMADA https://geopr.iat.pr.gov.br/server/rest/services/00_PUBLICACOES/municipios_pr_Oficial/FeatureServer/0 | Municípios do Paraná Oficial - IAT | campos: ['objectid', 'codibge', 'area_km2', 'nome', 'Shape__Area', 'Shape__Length']
-    total 399 | amostra: [{"objectid": 2032, "codibge": "4128401", "area_km2": 235.40602, "nome": "Uraí", "Shape__Area": 0.02076651420359926, "Shape__Length": 0.8601177092302895}, {"objectid": 2033, "codibge": "4104451", "area_km2": 567.90436, "nome": "Cantagalo", "Shape__Area": 0.05090346538676567, "Shape__Length": 2.10748800702961}, {"objectid": 2034, "codibge": "4115457", "area_km2": 518.04975, "nome": "Marquinho", "Shape__Area": 0.046364213268453996, "Shape__Length": 2.34951411158613}]
-    Londrina: 2 [{"attributes": {"objectid": 2159, "codibge": "4113700", "area_km2": 1648.07307, "nome": "Londrina", "Shape__Area": 0.14570637059046723, "Shape__Length": 3.0634291100825584}, "geometry": {"rings": [[[-51.17770160399993, -23.768007627303355], [-51.17778323099998, -23.76755536730333], [-51.17789556099996, -23.767232417303337], [-51.178039222999985, -23.766932552303363], [-51.178339489999985, -23.7666843503034], [-51.178445487999966, -23.76632681130335], [-51.17896064299998, -23.766119735303384], [-51.17912771199997, -23.7660724763034], [-51.179590941999955, -23.7658643753034], [-51.17992881499998, -23.765633468303413], [-51.18068616099998, -23.76534436230339], [-51.180854874999966, -23.765067495303427], [-51.18129208799997, -23.764360005303416], [-51.18145219699994, -23.764178266303446], [-51.18159431899994, -23.763908026303444], [-51.181772278999965, -23.76379192730342], [-51.182080596999974, -23.76376880430341], [-51.18245050399997, -23.76378128230344], [-51.18305467199997, -23.76386927130345], [-51.183795606999986, -23.764277654303417], [-51.18438449499996, -23.764594539303427], [-51.18484965599998, -23.764583051303447], [-51.18564879499996, -23.76457107230342], [-51.18644789999996, -23.76453723330339], [-51.187149873999935, -23.76397844230341], [-51.188166062999976, -23.762928440303433], [-51.18848105299997, -23.762831318303423], [-51.18905759699993, -23.76282140430346], [-51.189627694999956, -23.762692984303456], [-51.19006531799994, -23.76264412130349], [-51.19040399399995, -23.762762130303436], [-51.19073430499998, -23.76299798530346], [-51.19094864199997, -23.763260282303456], [-51.19117125899999, -23.76346306230345], [-51.19148697299995, -23.763672435303455], [-51.19175809299997, -23.763816454303466], [-51.19231909299998, -23.76396756030344], [-51.19275123899997, -23.764121707303428], [-51.19311717199997, -23.764343061303435], [-51.193548187999966, -23.764585219303413], [-51.19446897799998, -23.765007506303412], [-51.19505634799997, -23.765360215303417], [-51.195480858999986, -23.7656587423034], [-51.19656083599995, -23.76519467830338], [-51.197500556999955, -23.76435536230341], [-51.19883496999996, -23.763585380303414], [-51.19933928599994, -23.76336361830345], [-51.19994829499995, -23.763340156303457], [-51.20012102499993, -23.763153324303453], [-51.20022801999995, -23.76291165330343], [-51.20089927699996, -23.762519582303486], [-51.201336556999934, -23.762184091303453], [-51.20163209799995, -23.761899993303498], [-51.202042597999935, -23.76157392
+ESTAÇÃO LONDRINA UEL | Rodovia Celso Garcia, Campus UEL | {'x': -51.20034301853902, 'y': -23.325026297327717}
+  medidos: ['mp2_5_iqa', 'temp', 'umid'] | registros: 25
+   1793898000000 19 BOA MP2,5  7  {'mp2_5_iqa': 19, 'temp': 26, 'umid': 75}
+   1793901600000 19 BOA MP2,5  8  {'mp2_5_iqa': 19, 'temp': 27, 'umid': 68}
+   1793905200000 19 BOA MP2,5  8  {'mp2_5_iqa': 19, 'temp': 28, 'umid': 62}
+   1793908800000 None SEM DADOS None None {'mp2_5_iqa': None, 'temp': 28, 'umid': 64}
+   1793912400000 None SEM DADOS None None {'mp2_5_iqa': None, 'temp': 27, 'umid': 67}
+   1793916000000 None SEM DADOS None None {'mp2_5_iqa': None, 'temp': 25, 'umid': 74}
+   1793919600000 None SEM DADOS None None {'mp2_5_iqa': None, 'temp': 24, 'umid': 78}
+   1793923200000 None SEM DADOS None None {'mp2_5_iqa': None, 'temp': 23, 'umid': 84}
+   1793926800000 19 BOA MP2,5  8  {'mp2_5_iqa': 19, 'temp': 23, 'umid': 85}
+   1793930400000 19 BOA MP2,5  8  {'mp2_5_iqa': 19, 'temp': 22, 'umid': 87}
+   1793934000000 18 BOA MP2,5  7  {'mp2_5_iqa': 18, 'temp': 23, 'umid': 85}
+   1793937600000 18 BOA MP2,5  7  {'mp2_5_iqa': 18, 'temp': 30, 'umid': None}
+   1793941200000 18 BOA MP2,5  7  {'mp2_5_iqa': 18, 'temp': 21, 'umid': 92}
+   1793944800000 19 BOA MP2,5  7  {'mp2_5_iqa': 19, 'temp': 21, 'umid': 93}
+   1793948400000 16 BOA MP2,5  6  {'mp2_5_iqa': 16, 'temp': 20, 'umid': 97}
+   1793952000000 16 BOA MP2,5  6  {'mp2_5_iqa': 16, 'temp': 20, 'umid': 100}
+   1793955600000 17 BOA MP2,5  7  {'mp2_5_iqa': 17, 'temp': 21, 'umid': 98}
+   1793959200000 18 BOA MP2,5  7  {'mp2_5_iqa': 18, 'temp': 22, 'umid': 92}
+   1793962800000 17 BOA MP2,5  7  {'mp2_5_iqa': 17, 'temp': 23, 'umid': 86}
+   1793966400000 17 BOA MP2,5  7  {'mp2_5_iqa': 17, 'temp': 24, 'umid': 83}
+   1793970000000 15 BOA MP2,5  6  {'mp2_5_iqa': 15, 'temp': 26, 'umid': 79}
+   1793973600000 15 BOA MP2,5  6  {'mp2_5_iqa': 15, 'temp': 29, 'umid': 74}
+   1793977200000 15 BOA MP2,5  6  {'mp2_5_iqa': 15, 'temp': 30, 'umid': 71}
+   1793980800000 15 BOA MP2,5  6  {'mp2_5_iqa': 15, 'temp': None, 'umid': None}
 
-SERVIÇO https://geopr.iat.pr.gov.br/server/rest/services/00_PUBLICACOES/municipios_pr_Oficial/FeatureServer/0 | Municípios do Paraná Oficial - IAT
-  CAMADA https://geopr.iat.pr.gov.br/server/rest/services/00_PUBLICACOES/municipios_pr_Oficial/FeatureServer/0 | Municípios do Paraná Oficial - IAT | campos: ['objectid', 'codibge', 'area_km2', 'nome', 'Shape__Area', 'Shape__Length']
-    total 399 | amostra: [{"objectid": 2032, "codibge": "4128401", "area_km2": 235.40602, "nome": "Uraí", "Shape__Area": 0.02076651420359926, "Shape__Length": 0.8601177092302895}, {"objectid": 2033, "codibge": "4104451", "area_km2": 567.90436, "nome": "Cantagalo", "Shape__Area": 0.05090346538676567, "Shape__Length": 2.10748800702961}, {"objectid": 2034, "codibge": "4115457", "area_km2": 518.04975, "nome": "Marquinho", "Shape__Area": 0.046364213268453996, "Shape__Length": 2.34951411158613}]
-    Londrina: 2 [{"attributes": {"objectid": 2159, "codibge": "4113700", "area_km2": 1648.07307, "nome": "Londrina", "Shape__Area": 0.14570637059046723, "Shape__Length": 3.0634291100825584}, "geometry": {"rings": [[[-51.17770160399993, -23.768007627303355], [-51.17778323099998, -23.76755536730333], [-51.17789556099996, -23.767232417303337], [-51.178039222999985, -23.766932552303363], [-51.178339489999985, -23.7666843503034], [-51.178445487999966, -23.76632681130335], [-51.17896064299998, -23.766119735303384], [-51.17912771199997, -23.7660724763034], [-51.179590941999955, -23.7658643753034], [-51.17992881499998, -23.765633468303413], [-51.18068616099998, -23.76534436230339], [-51.180854874999966, -23.765067495303427], [-51.18129208799997, -23.764360005303416], [-51.18145219699994, -23.764178266303446], [-51.18159431899994, -23.763908026303444], [-51.181772278999965, -23.76379192730342], [-51.182080596999974, -23.76376880430341], [-51.18245050399997, -23.76378128230344], [-51.18305467199997, -23.76386927130345], [-51.183795606999986, -23.764277654303417], [-51.18438449499996, -23.764594539303427], [-51.18484965599998, -23.764583051303447], [-51.18564879499996, -23.76457107230342], [-51.18644789999996, -23.76453723330339], [-51.187149873999935, -23.76397844230341], [-51.188166062999976, -23.762928440303433], [-51.18848105299997, -23.762831318303423], [-51.18905759699993, -23.76282140430346], [-51.189627694999956, -23.762692984303456], [-51.19006531799994, -23.76264412130349], [-51.19040399399995, -23.762762130303436], [-51.19073430499998, -23.76299798530346], [-51.19094864199997, -23.763260282303456], [-51.19117125899999, -23.76346306230345], [-51.19148697299995, -23.763672435303455], [-51.19175809299997, -23.763816454303466], [-51.19231909299998, -23.76396756030344], [-51.19275123899997, -23.764121707303428], [-51.19311717199997, -23.764343061303435], [-51.193548187999966, -23.764585219303413], [-51.19446897799998, -23.765007506303412], [-51.19505634799997, -23.765360215303417], [-51.195480858999986, -23.7656587423034], [-51.19656083599995, -23.76519467830338], [-51.197500556999955, -23.76435536230341], [-51.19883496999996, -23.763585380303414], [-51.19933928599994, -23.76336361830345], [-51.19994829499995, -23.763340156303457], [-51.20012102499993, -23.763153324303453], [-51.20022801999995, -23.76291165330343], [-51.20089927699996, -23.762519582303486], [-51.201336556999934, -23.762184091303453], [-51.20163209799995, -23.761899993303498], [-51.202042597999935, -23.76157392
+ESTAÇÃO LONDRINA | Rua Brasil, N° 1115, Centro - Regional do IAP | {'x': -51.15372748686785, 'y': -23.318800990683563}
+  medidos: ['so2_iqa', 'mp2_5_iqa', 'temp', 'umid'] | registros: 25
+   1793898000000 27 BOA SO2  27  {'so2_iqa': 27, 'mp2_5_iqa': 14, 'temp': 26, 'umid': 59}
+   1793901600000 26 BOA SO2  27  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 28, 'umid': 52}
+   1793905200000 26 BOA SO2  27  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 29, 'umid': 47}
+   1793908800000 26 BOA SO2  26  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 28, 'umid': 50}
+   1793912400000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 27, 'umid': 53}
+   1793916000000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 27, 'umid': 57}
+   1793919600000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 26, 'umid': 63}
+   1793923200000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 25, 'umid': 69}
+   1793926800000 26 BOA SO2  26  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 24, 'umid': 73}
+   1793930400000 26 BOA SO2  26  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 24, 'umid': 76}
+   1793934000000 26 BOA SO2  26  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 23, 'umid': 83}
+   1793937600000 26 BOA SO2  26  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 31, 'umid': 55}
+   1793941200000 26 BOA SO2  26  {'so2_iqa': 26, 'mp2_5_iqa': 14, 'temp': 22, 'umid': 99}
+   1793944800000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 21, 'umid': 99}
+   1793948400000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 21, 'umid': 99}
+   1793952000000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 21, 'umid': 99}
+   1793955600000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 22, 'umid': 99}
+   1793959200000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 23, 'umid': 92}
+   1793962800000 25 BOA SO2  26  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 24, 'umid': 82}
+   1793966400000 25 BOA SO2  25  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 25, 'umid': 76}
+   1793970000000 25 BOA SO2  25  {'so2_iqa': 25, 'mp2_5_iqa': 14, 'temp': 28, 'umid': 67}
+   1793973600000 24 BOA SO2  25  {'so2_iqa': 24, 'mp2_5_iqa': 14, 'temp': 30, 'umid': 60}
+   1793977200000 24 BOA SO2  25  {'so2_iqa': 24, 'mp2_5_iqa': 14, 'temp': 31, 'umid': 55}
+   1793980800000 24 BOA SO2  25  {'so2_iqa': 24, 'mp2_5_iqa': 14, 'temp': None, 'umid': None}
 
-SERVIÇO https://geopr.iat.pr.gov.br/server/rest/services/Hosted/boletim_ultimas_24h/FeatureServer | 
-  CAMADA https://geopr.iat.pr.gov.br/server/rest/services/Hosted/boletim_ultimas_24h/FeatureServer/0 | boletim_ultimas_24h | campos: ['objectid', 'temp', 'umid', 'so2_iqa', 'no2_iqa', 'o3_iqa', 'co_iqa', 'mp10_iqa', 'mp2_5_iqa', 'pts_iqa', 'iqa', 'qualidade', 'poluente', 'conc', 'estacao', 'localizacao', 'coord_x', 'coord_y', 'chave_conc', 'hora']
-    total 725 | amostra: [{"poluente": "O3 ", "temp": null, "localizacao": "Rua Professora Maria de Assumpção, N° 2590, Posto 24 horas do Boqueirão, Bairro Boqueirão", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793980800000, "coord_x": 676320, "coord_y": 7179280, "mp2_5_iqa": 16, "no2_iqa": null, "conc": "62 ", "so2_iqa": 9, "mp10_iqa": 9, "estacao": "BOQUEIRÃO", "iqa": 24, "o3_iqa": 24, "chave_conc": "BOQUEIRÃO676320", "objectid": 15094651, "co_iqa": 5}, {"poluente": "O3 ", "temp": null, "localizacao": "Rua Professora Maria de Assumpção, N° 2590, Posto 24 horas do Boqueirão, Bairro Boqueirão", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793977200000, "coord_x": 676320, "coord_y": 7179280, "mp2_5_iqa": 16, "no2_iqa": 1, "conc": "63 ", "so2_iqa": 9, "mp10_iqa": 9, "estacao": "BOQUEIRÃO", "iqa": 24, "o3_iqa": 24, "chave_conc": "BOQUEIRÃO676320", "objectid": 15094652, "co_iqa": 5}, {"poluente": "O3 ", "temp": null, "localizacao": "Rua Professora Maria de Assumpção, N° 2590, Posto 24 horas do Boqueirão, Bairro Boqueirão", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793973600000, "coord_x": 676320, "coord_y": 7179280, "mp2_5_iqa": 16, "no2_iqa": 1, "conc": "63 ", "so2_iqa": 9, "mp10_iqa": 8, "estacao": "BOQUEIRÃO", "iqa": 24, "o3_iqa": 24, "chave_conc": "BOQUEIRÃO676320", "objectid": 15094653, "co_iqa": 5}]
-    Londrina: 50 [{"attributes": {"poluente": "MP2,5 ", "temp": null, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793980800000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095026, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 30, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 71, "hora": 1793977200000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095027, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 29, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 74, "hora": 1793973600000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095028, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 26, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 79, "hora": 1793970000000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095029, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 24, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 83, "hora": 1793966400000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 17, "no2_iqa": null, "conc": "7 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 17, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095030, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}]
-
-SERVIÇO https://geopr.iat.pr.gov.br/server/rest/services/Hosted/boletim_ultimas_24h/FeatureServer/0 | boletim_ultimas_24h
-  CAMADA https://geopr.iat.pr.gov.br/server/rest/services/Hosted/boletim_ultimas_24h/FeatureServer/0 | boletim_ultimas_24h | campos: ['objectid', 'temp', 'umid', 'so2_iqa', 'no2_iqa', 'o3_iqa', 'co_iqa', 'mp10_iqa', 'mp2_5_iqa', 'pts_iqa', 'iqa', 'qualidade', 'poluente', 'conc', 'estacao', 'localizacao', 'coord_x', 'coord_y', 'chave_conc', 'hora']
-    total 725 | amostra: [{"poluente": "O3 ", "temp": null, "localizacao": "Rua Professora Maria de Assumpção, N° 2590, Posto 24 horas do Boqueirão, Bairro Boqueirão", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793980800000, "coord_x": 676320, "coord_y": 7179280, "mp2_5_iqa": 16, "no2_iqa": null, "conc": "62 ", "so2_iqa": 9, "mp10_iqa": 9, "estacao": "BOQUEIRÃO", "iqa": 24, "o3_iqa": 24, "chave_conc": "BOQUEIRÃO676320", "objectid": 15094651, "co_iqa": 5}, {"poluente": "O3 ", "temp": null, "localizacao": "Rua Professora Maria de Assumpção, N° 2590, Posto 24 horas do Boqueirão, Bairro Boqueirão", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793977200000, "coord_x": 676320, "coord_y": 7179280, "mp2_5_iqa": 16, "no2_iqa": 1, "conc": "63 ", "so2_iqa": 9, "mp10_iqa": 9, "estacao": "BOQUEIRÃO", "iqa": 24, "o3_iqa": 24, "chave_conc": "BOQUEIRÃO676320", "objectid": 15094652, "co_iqa": 5}, {"poluente": "O3 ", "temp": null, "localizacao": "Rua Professora Maria de Assumpção, N° 2590, Posto 24 horas do Boqueirão, Bairro Boqueirão", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793973600000, "coord_x": 676320, "coord_y": 7179280, "mp2_5_iqa": 16, "no2_iqa": 1, "conc": "63 ", "so2_iqa": 9, "mp10_iqa": 8, "estacao": "BOQUEIRÃO", "iqa": 24, "o3_iqa": 24, "chave_conc": "BOQUEIRÃO676320", "objectid": 15094653, "co_iqa": 5}]
-    Londrina: 50 [{"attributes": {"poluente": "MP2,5 ", "temp": null, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": null, "hora": 1793980800000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095026, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 30, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 71, "hora": 1793977200000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095027, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 29, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 74, "hora": 1793973600000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095028, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 26, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 79, "hora": 1793970000000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 15, "no2_iqa": null, "conc": "6 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 15, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095029, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}, {"attributes": {"poluente": "MP2,5 ", "temp": 24, "localizacao": "Rodovia Celso Garcia, Campus UEL", "pts_iqa": null, "qualidade": "BOA", "umid": 83, "hora": 1793966400000, "coord_x": 479518, "coord_y": 7420485, "mp2_5_iqa": 17, "no2_iqa": null, "conc": "7 ", "so2_iqa": null, "mp10_iqa": null, "estacao": "LONDRINA UEL", "iqa": 17, "o3_iqa": null, "chave_conc": "LONDRINA UEL479518", "objectid": 15095030, "co_iqa": null}, "geometry": {"x": -51.20034301853902, "y": -23.325026297327717}}]
-
-SERVIÇO https://geopr.iat.pr.gov.br/server/rest/services/Hosted/frequencia_vento/FeatureServer/0 | frequencia_vento
-  CAMADA https://geopr.iat.pr.gov.br/server/rest/services/Hosted/frequencia_vento/FeatureServer/0 | frequencia_vento | campos: ['objectid', 'seq_est', 'nome_est', 'sigla_est', 'freq_n', 'vel_n', 'freq_nne', 'vel_nne', 'freq_ne', 'vel_ne', 'freq_ene', 'vel_ene', 'freq_e', 'vel_e', 'freq_ese', 'vel_ese', 'freq_se', 'vel_se', 'freq_sse', 'vel_sse', 'freq_s', 'vel_s', 'freq_ssw', 'vel_ssw', 'freq_sw', 'vel_sw', 'freq_wsw', 'vel_wsw', 'freq_w', 'vel_w', 'freq_wnw', 'vel_wnw', 'freq_nw', 'vel_nw', 'freq_nnw', 'vel_nnw']
-    total 33 | amostra: [{"vel_ese": 0, "vel_nnw": 0, "freq_sse": 0, "freq_sw": 0, "vel_ne": 0, "freq_wnw": 0, "sigla_est": "BOQ", "vel_wnw": 0, "freq_ese": 0, "freq_nnw": 0, "seq_est": 24, "vel_nne": 0, "freq_ne": 0, "freq_e": 0, "vel_sw": 0, "vel_n": 0, "freq_nne": 0, "vel_ssw": 0, "freq_n": 1, "freq_s": 0, "freq_ene": 0, "vel_se": 0, "freq_wsw": 0, "vel_ene": 0, "vel_e": 0, "freq_ssw": 0, "vel_wsw": 0, "nome_est": "BOQUEIRÃO", "freq_se": 0, "vel_sse": 0, "freq_w": 0, "vel_nw": 0, "freq_nw": 0, "vel_w": 0, "objectid": 513910, "vel_s": 0}, {"vel_ese": 0, "vel_nnw": 0, "freq_sse": 0, "freq_sw": 0, "vel_ne": 0, "freq_wnw": 0, "sigla_est": "CAS", "vel_wnw": 0, "freq_ese": 0, "freq_nnw": 0, "seq_est": 65, "vel_nne": 0, "freq_ne": 0, "freq_e": 0, "vel_sw": 0, "vel_n": 0, "freq_nne": 0, "vel_ssw": 0, "freq_n": 0, "freq_s": 0, "freq_ene": 0, "vel_se": 0, "freq_wsw": 0, "vel_ene": 0, "vel_e": 0, "freq_ssw": 0, "vel_wsw": 0, "nome_est": "CASTRO", "freq_se": 0, "vel_sse": 0, "freq_w": 0, "vel_nw": 0, "freq_nw": 0, "vel_w": 0, "objectid": 513911, "vel_s": 0}, {"vel_ese": 3.31999993, "vel_nnw": 2.41000009, "freq_sse": 2, "freq_sw": 0, "vel_ne": 2.72000003, "freq_wnw": 0, "sigla_est": "CIC", "vel_wnw": 0, "freq_ese": 2, "freq_nnw": 8, "seq_est": 25, "vel_nne": 0, "freq_ne": 1, "freq_e": 0, "vel_sw": 0, "vel_n": 2.02999997, "freq_nne": 0, "vel_ssw": 3.72000003, "freq_n": 1, "freq_s": 0, "freq_ene": 0, "vel_se": 0, "freq_wsw": 1, "vel_ene": 0, "vel_e": 0, "freq_ssw": 3, "vel_wsw": 1.62, "nome_est": "CIC", "freq_s
-    Londrina: 2 [{"attributes": {"vel_ese": 0.50999999, "vel_nnw": 0, "freq_sse": 5, "freq_sw": 1, "vel_ne": 0, "freq_wnw": 2, "sigla_est": "LON", "vel_wnw": 2.8900001, "freq_ese": 3, "freq_nnw": 0, "seq_est": 8, "vel_nne": 0, "freq_ne": 0, "freq_e": 0, "vel_sw": 1.94000006, "vel_n": 0.67000002, "freq_nne": 0, "vel_ssw": 0.98000002, "freq_n": 1, "freq_s": 5, "freq_ene": 0, "vel_se": 1.03999996, "freq_wsw": 0, "vel_ene": 0, "vel_e": 0, "freq_ssw": 3, "vel_wsw": 0, "nome_est": "LONDRINA", "freq_se": 3, "vel_sse": 0.67000002, "freq_w": 1, "vel_nw": 0, "freq_nw": 0, "vel_w": 3.28999996, "objectid": 513922, "vel_s": 1.50999999}}, {"attributes": {"vel_ese": 0.55000001, "vel_nnw": 2.83999991, "freq_sse": 4, "freq_sw": 0, "vel_ne": 0, "freq_wnw": 1, "sigla_est": "LDA", "vel_wnw": 2, "freq_ese": 2, "freq_nnw": 2, "seq_est": 16, "vel_nne": 0, "freq_ne": 0, "freq_e": 0, "vel_sw": 0, "vel_n": 1.13999999, "freq_nne": 0, "vel_ssw": 0.47999999, "freq_n": 2, "freq_s": 3, "freq_ene": 1, "vel_se": 0.23999999, "freq_wsw": 1, "vel_ene": 1.13999999, "vel_e": 0, "freq_ssw": 2, "vel_wsw": 0.27000001, "nome_est": "LONDRINA UEL", "freq_se": 1, "vel_sse": 0.89999998, "freq_w": 3, "vel_nw": 2.66000009, "freq_nw": 2, "vel_w": 1.42999995, "objectid": 513927, "vel_s": 1.21000004}}]
-
-SERVIÇO https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer | <div style='text-align:Left;font-size:12pt'><p><span>This map portrays elevation
-  CAMADA https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/0 | World_Hillshade | campos: ['FID', 'Shape', 'Id']
-    consulta ERRO HTTP Error 403: Forbidden
+Todas as estações: ['BOQUEIRÃO', 'CASCAVEL', 'CIC', 'COLOMBO', 'CSN', 'DEFESA CIVIL ARAUCARIA', 'ECOVILLE', 'ESCOLA DE SAUDE PUBLICA', 'ESTAÇÃO MÓVEL IAP', 'FOSPAR', 'FOZ DO IGUAÇU', 'FRANCISCO BELTRÃO', 'GPC ARAUCARIA', 'GUARAPUAVA', 'JARDIM DAS AMERICAS', 'LONDRINA', 'LONDRINA UEL', 'MARINGÁ', 'MARINGÁ IAT', 'MVB', 'OUVIDOR PARDINHO', 'PARANAGUÁ', 'PETROSIX', 'PIRAI DO SUL', 'PONTA GROSSA', 'REPAR', 'UEG', 'UNIAO DA VITORIA']
+svc Hosted/ACS_Matrizes FeatureServer
+svc Hosted/ae_conservacao MapServer
+svc Hosted/AECR_municipios FeatureServer
+svc Hosted/area_cana_acucar FeatureServer
+svc Hosted/area_estrategica_restauracao MapServer
+svc Hosted/areas_perda_vegetacao_basemap MapServer
+svc Hosted/ASSENTAMENTO FeatureServer
+svc Hosted/Assentamentos_CAR_Estado_Parana FeatureServer
+svc Hosted/Aterros_e_Lixões FeatureServer
+svc Hosted/auto_infracao_homolog FeatureServer
+svc Hosted/barragens_dashboard_publico FeatureServer
+svc Hosted/Barragens_VisitaTecnica_Visualizacao_Imagens FeatureServer
+svc Hosted/Beneficiamento_de_graos FeatureServer
+svc Hosted/Beneficiamento_de_Grãos FeatureServer
+svc Hosted/Blocos_de_Entrega FeatureServer
+svc Hosted/boletim_ultimas_24h FeatureServer
+svc Hosted/Cadastro_Cria FeatureServer
+svc Hosted/Cadastro_do_usuário_de_água_de_reuso_2_visualização FeatureServer
+svc Hosted/cadastro_feras FeatureServer
+svc Hosted/cadastro_perfuradoras_pocos_2025_2_visualização FeatureServer
+svc Hosted/CARGASPOLUIDORAS FeatureServer
+svc Hosted/Cavernas_CANIE FeatureServer
+svc Hosted/Compartilhe_o_seu_plantio_validados FeatureServer
+svc Hosted/Composição_da_Paisagem FeatureServer
+svc Hosted/Concentrações_Urbanas_IBGE_do_Paraná_2022 FeatureServer
+svc Hosted/contradita_homolog FeatureServer
+svc Hosted/Conversao_de_Multas_2026 FeatureServer
+svc Hosted/Dashboard_PCTS_CAR FeatureServer
+svc Hosted/dashboard_Titulo_Terra FeatureServer
+svc Hosted/demanda_fiscalizacao_homolog FeatureServer
+svc Hosted/Dengue_a_cada_100_mil_habitantes FeatureServer
+svc Hosted/Dengue_por_Municípios FeatureServer
+svc Hosted/Densidade_Demográfica__hab_km²__por_Município__2022 FeatureServer
+svc Hosted/Densidade_Demográfica_hab_km²_por_Setor_Censitário_2022 FeatureServer
+svc Hosted/Destinacao_Prioritaria_Para_Recuperacao_Energetica FeatureServer
+svc Hosted/Destinacao_Prioritaria_Para_Recuperacao_Energetica MapServer
+svc Hosted/Distribuição_dos_Casos_de_Dengue FeatureServer
+svc Hosted/Distribuição_dos_Casos_de_Febre_Amarela FeatureServer
+svc Hosted/Distribuição_dos_Casos_de_Leptospirose FeatureServer
+svc Hosted/Distribuição_dos_Casos_de_Zika FeatureServer
+svc Hosted/Distribuição_dos_Surtos_de_Doenças_Diarreicas FeatureServer
+svc Hosted/Divisao_Bacias_Hidrograficas FeatureServer
+svc Hosted/Divisão_Lotes FeatureServer
+svc Hosted/Doenças_Diarreicas_a_cada_100_mil_habitantes FeatureServer
+svc Hosted/Doenças_Diarreicas_por_Município FeatureServer
+svc Hosted/DomiciliosColetivos FeatureServer
+svc Hosted/Domicílios_Particulares_CNEFE_IBGE FeatureServer
+svc Hosted/Edificacoes_Em_Construcao__CNEFE___IBGE_ FeatureServer
+svc Hosted/enquadramento_FICA FeatureServer
+svc Hosted/Erodibilidade_das_unidades_de_mapeamento_UM_de_solos_EMBRAPA_2024 FeatureServer
+svc Hosted/Escritorios_Regionais_IAT VectorTileServer
+svc Hosted/Especies_Nativas_Prod_Agricola FeatureServer
+svc Hosted/Estabelecimentos_Agropecuarios__CNEFE___IBGE_ FeatureServer
+svc Hosted/Estabelecimentos_de_Ensino__CNEFE___IBGE_ FeatureServer
+svc Hosted/Estabelecimentos_Religiosos__CNEFE___IBGE FeatureServer
+svc Hosted/EstabelecimentosDeOutrasFinalidades__CNEFE___IBGE_ FeatureServer
+svc Hosted/EstabelecimentosDeSaudeCNEFE FeatureServer
+svc Hosted/Estatistica_Uso_Terra FeatureServer
+svc Hosted/Estimativa_de_água_disponível_de_solos_do_Brasil___Embrapa_Solos___2020 FeatureServer
+svc Hosted/Faxinais FeatureServer
+svc Hosted/Febre_Amarela_a_cada_100_mil_habitantes FeatureServer
+svc Hosted/Febre_Amarela_por_Município FeatureServer
+svc Hosted/filtro_archive FeatureServer
+svc Hosted/fito_PRAD FeatureServer
+svc Hosted/FlorestaNativa_Varzea FeatureServer
+svc Hosted/formulario_inscricao_bolsista_2022 FeatureServer
+svc Hosted/Formulario_treinamento_IAT_view FeatureServer
+svc Hosted/Fragmentos_prioritarios_dash FeatureServer
+svc Hosted/frequencia_vento FeatureServer
+svc Hosted/fusos_utm FeatureServer
+svc Hosted/historico_balneabilidade FeatureServer
+svc Hosted/ICMS FeatureServer
+svc Hosted/IDeA FeatureServer
+svc Hosted/infartos_ano FeatureServer
+svc Hosted/infartos_mensais_municipios FeatureServer
+svc Hosted/infartos_municipio FeatureServer
+svc Hosted/Internações_Município_de_Residência FeatureServer
+svc Hosted/Inundacao_Enxurrada_Defesa_Civil FeatureServer
+svc Hosted/IQA_2026 FeatureServer
+svc Hosted/laudo_verificacao_termo_homolog FeatureServer
+svc Hosted/Leptospirose_a_cada_100_mil_habitantes FeatureServer
+svc Hosted/Leptospirose_por_Município FeatureServer
+svc Hosted/Ligar_Feições_para_Estação_de_Monitoramento_da_Qualidade_do_Ar_visualização FeatureServer
+svc Hosted/Limite_da_Unidade_de_Conservação FeatureServer
+svc Hosted/Limite_estadual_do_Paraná FeatureServer
+svc Hosted/Limites_Territoriais_Modificado FeatureServer
+svc Hosted/Lista_Especies FeatureServer
+svc Hosted/local_atendimento FeatureServer
+svc Hosted/local_residencia FeatureServer
+svc Hosted/Manejo_Agroflorestal FeatureServer
+svc Hosted/Mapa_Calor_SIMFAUNA FeatureServer
+svc Hosted/Mapa_de_Calor_Lista_Vermelha_da_Fauna FeatureServer
+svc Hosted/MapaCalor_FaunaVitimada FeatureServer
+svc Hosted/Mapas_Uso_Terra FeatureServer
+svc Hosted/Monitora_PRAD_visualização FeatureServer
+svc Hosted/municipios_regionais_iat FeatureServer
+svc Hosted/municipios_regionais_sesa FeatureServer
+svc Hosted/Municípios FeatureServer
+svc Hosted/notificacao_homolog FeatureServer
+svc Hosted/oficioMP_homolog FeatureServer
+svc Hosted/painel_saude_chikungunya_vis FeatureServer
+svc Hosted/painel_saude_controle_vis FeatureServer
+svc Hosted/painel_saude_dengue_vis FeatureServer
+svc Hosted/painel_saude_diarreicas_vis FeatureServer
+svc Hosted/painel_saude_epizootias_vis FeatureServer
+svc Hosted/painel_saude_febre_amarela_vis FeatureServer
+svc Hosted/painel_saude_leptospirose_vis FeatureServer
+svc Hosted/painel_saude_zika_vis FeatureServer
+svc Hosted/Perda_Vegetacao_Basemap MapServer
+svc Hosted/pontos_coleta_agua FeatureServer
+svc Hosted/Pontos_Lista_Vermelha_da_Fauna FeatureServer
+svc Hosted/Porcentagem_Vegetacao_Nativa_Municipio FeatureServer
+svc Hosted/Postos_da_Polícia_Rodoviária_Federal FeatureServer
+svc Hosted/povos_comunidades_tradicionais FeatureServer
+svc Hosted/PR_Municipios_2022 FeatureServer
+svc Hosted/PRAD_Area FeatureServer
+svc Hosted/Programa_Parques_Paraná FeatureServer
+svc Hosted/Projeto_Recuperacao_Areas_Degradada FeatureServer
+svc Hosted/PSH_AreasPrioritarias FeatureServer
+svc Hosted/Publicações_Programa_i9_results FeatureServer
+svc Hosted/Qualidade_Agua_SISAGUA FeatureServer
+svc Hosted/qualidade_agua FeatureServer
+svc Hosted/Regionais_IAT MapServer
+svc Hosted/regionais_sesa FeatureServer
+svc Hosted/Registros_de_Imóveis___INCRA FeatureServer
+svc Hosted/REGRAS_NEGOCIO FeatureServer
+svc Hosted/relatorio_autuacao_homolog FeatureServer
+svc Hosted/relatorio_conclusivo_homolog FeatureServer
+svc Hosted/Resumo_Lista_Vermelha FeatureServer
+svc Hosted/Resíduos_Sólidos FeatureServer
+svc Hosted/RIA_homolog FeatureServer
+svc Hosted/service_02f2e6957a7b41968067dd61d8f06eca FeatureServer
+svc Hosted/service_0385ad99601d41ee887aaf3c35a8f8ef FeatureServer
+svc Hosted/service_0d3c437b6768444aa6e5f7a59e1dd406_form FeatureServer
+svc Hosted/service_20166e737a884232af3be7d94c8d2071 FeatureServer
+svc Hosted/service_377f6f4d28494d99bf8c91544e9d68ab FeatureServer
+svc Hosted/service_45a267b3afd7477d9148bdca0a2a53f0 FeatureServer
+svc Hosted/service_5a26f2a0e32441af9733eca67fddc5e3 FeatureServer
+svc Hosted/service_6f9fc1ccea4d4ead863fa54da71c2a1c FeatureServer
+svc Hosted/service_74ab1edda78245c590031e398470ac9f FeatureServer
+svc Hosted/service_9187777670904b11b95e823267c8db90 FeatureServer
+svc Hosted/service_9d58c942390c4f52ac42f3896bb342a8 FeatureServer
+svc Hosted/service_a262f4e02107445889b580ecf3964440 FeatureServer
+svc Hosted/service_abd8bd7819244854b1fa1ea9c616240a FeatureServer
+svc Hosted/service_ad05d02ab2df4da28f63318f91e41235 FeatureServer
+svc Hosted/service_ced5e849886b42b7a7cb569df63a43f3 FeatureServer
+svc Hosted/service_d88c1aba67ff4c3e9216a032554d1220 FeatureServer
+svc Hosted/service_dc439b16f3aa44d4ae06da37ec1b0163 FeatureServer
+svc Hosted/service_de8b06e6d3bb44bc89ec4dc448649c7f FeatureServer
+svc Hosted/service_e5b7bd1f0e4e4ebc91f320f39631245f FeatureServer
+svc Hosted/service_f33eb13a2c7e4ffa90db96fc0eedc118 FeatureServer
+svc Hosted/service_fff13d50e0b14baa82e94f2e204787f2 FeatureServer
+svc Hosted/Setor_Censitario_IBGE FeatureServer
+svc Hosted/SISFAUNA FeatureServer
+svc Hosted/SNIS_Esgoto_Nº_de_Extravasamento_de_Esgoto_2022 FeatureServer
+svc Hosted/SNIS_Esgoto_Índice_de_coleta_de_esgoto_2022 FeatureServer
+svc Hosted/survey123_0908d954363f463d873ef9d6d466d93c_form FeatureServer
+svc Hosted/survey123_0cd6d3e973734061ab48c43cc00bf8b1_results FeatureServer
+svc Hosted/survey123_0f5e379e939e4befa3d38887042e052b_results FeatureServer
+svc Hosted/survey123_237f33caacf94b749150f896cd23a91e_results FeatureServer
+svc Hosted/survey123_3d5522f64bdb4c8aae1a896df7f50733_results FeatureServer
+svc Hosted/survey123_42eb6626f2b046d780526df7704e3bd2_form FeatureServer
+svc Hosted/survey123_4c05ea322c7a41cd84eb8b3b6a62b867_results FeatureServer
+svc Hosted/survey123_65a6a92a2f834718bd1cb06876283090_results FeatureServer
+svc Hosted/survey123_99dd9569fd6741b8a5700f444cd4e5bd_stakeholder FeatureServer
+svc Hosted/survey123_a49e240301c141c2bc8744964ccd265c_form FeatureServer
+svc Hosted/survey123_c8af92a6695247559e9a016f6e6412a6_results FeatureServer
+svc Hosted/tabela_restauracao FeatureServer
+svc Hosted/tabela_resumo_ucs FeatureServer
+svc Hosted/Tabua_Avaliacao_2022 FeatureServer
+svc Hosted/Temperatura_Município_2020_2026 FeatureServer
+svc Hosted/Termo_Ajustamento_Conduta_TAC FeatureServer
+svc Hosted/termo_compromisso_homolog FeatureServer
+svc Hosted/termo_compromisso_homologfica FeatureServer
+svc Hosted/Termo_Compromisso FeatureServer
+svc Hosted/termo_destinacao_homolog FeatureServer
+svc Hosted/termo_materialCapturado_homolog FeatureServer
+svc Hosted/termo_materialCapturado_homologfica FeatureServer
+svc Hosted/terras_indigenas_ae FeatureServer
+svc Hosted/testeFICAAIA FeatureServer
+svc Hosted/titulosTerra FeatureServer
+svc Hosted/TRE_LOCAL_VOTACAO FeatureServer
+svc Hosted/UC_Areas_Estrategicas_Conservacao FeatureServer
+svc Hosted/uc_pendente_regularizacao FeatureServer
+svc Hosted/Unidades_Conservacao_SIGABIO FeatureServer
+svc Hosted/unidades_fitogeografica_mun FeatureServer
+svc Hosted/Uso_Cobertura_Terra_Basemap MapServer
+svc Hosted/Uso_da_Terra_Assentamentos___Coleção_Mapbiomas_1985_2023 FeatureServer
+svc Hosted/Uso_do_Solo_em_APP FeatureServer
+svc Hosted/Uso_e_Cobertura_MapBiomas_2008 FeatureServer
+svc Hosted/Uso_e_Cobertura_MapBiomas_2024 FeatureServer
+svc Hosted/Vegetacao_estatistica FeatureServer
+svc Hosted/vegetacao_nativa_2021_iat MapServer
+svc Hosted/Vegetacao_Nativa_IAT_2021 FeatureServer
+svc Hosted/Vegetacao_Nativa_pcts FeatureServer
+svc Hosted/Vegetacao_Nativa_Terra_Indigena FeatureServer
+svc Hosted/Vegetação_2012_2021 FeatureServer
+svc Hosted/Vegetação_Nativa_Assentamentos_INCRA FeatureServer
+svc Hosted/view_arquivados_homolog FeatureServer
+svc Hosted/Visitacao_UC FeatureServer
+svc Hosted/viveiros_laboratorios_iat FeatureServer
+svc Hosted/Zika_a_cada_100_mil_habitantes FeatureServer
+svc Hosted/Zika_por_Município FeatureServer
+svc Hosted/Índice_de_tratamento_de_esgoto FeatureServer
+svc Hosted/Óbitos_Município_de_Residência FeatureServer
