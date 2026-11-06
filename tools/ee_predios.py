@@ -21,13 +21,15 @@ proj = col.first().projection()
 mos = col.mosaic().setDefaultProjection(proj)
 pres = mos.select('building_presence').gt(0.5).unmask(0)
 alt = mos.select('building_height').unmask(0)
-img = ee.Image.cat([pres.rename('ocup'), alt.multiply(pres).rename('hsoma')]).float() \
-    .reduceResolution(ee.Reducer.mean(), maxPixels=4096)
+base = ee.Image.cat([pres.rename('ocup'), alt.multiply(pres).rename('hsoma')]).float().setDefaultProjection(proj)
 ocup = np.zeros((H, W), 'float32'); hsoma = np.zeros((H, W), 'float32')
-T = 400
+T = 200
 for r0 in range(0, H, T):
     for c0 in range(0, W, T):
         h, w = min(T, H - r0), min(T, W - c0)
+        x0, y0 = tr.c + c0 * tr.a, tr.f + r0 * tr.e
+        ret = ee.Geometry.Rectangle([x0, y0 + h * tr.e, x0 + w * tr.a, y0], 'EPSG:4326', False)
+        img = base.clip(ret).reduceResolution(ee.Reducer.mean(), maxPixels=4096)
         req = {'expression': img, 'fileFormat': 'NUMPY_NDARRAY',
                'grid': {'dimensions': {'width': w, 'height': h},
                         'affineTransform': {'scaleX': tr.a, 'shearX': 0, 'translateX': tr.c + c0 * tr.a,
