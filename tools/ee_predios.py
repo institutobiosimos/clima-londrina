@@ -29,7 +29,7 @@ for r0 in range(0, H, T):
         h, w = min(T, H - r0), min(T, W - c0)
         x0, y0 = tr.c + c0 * tr.a, tr.f + r0 * tr.e
         ret = ee.Geometry.Rectangle([x0, y0 + h * tr.e, x0 + w * tr.a, y0], 'EPSG:4326', False)
-        img = base.clip(ret).reduceResolution(ee.Reducer.mean(), maxPixels=4096)
+        img = base.clip(ret).reproject(proj.atScale(4)).reduceResolution(ee.Reducer.mean(), maxPixels=1024)
         req = {'expression': img, 'fileFormat': 'NUMPY_NDARRAY',
                'grid': {'dimensions': {'width': w, 'height': h},
                         'affineTransform': {'scaleX': tr.a, 'shearX': 0, 'translateX': tr.c + c0 * tr.a,
