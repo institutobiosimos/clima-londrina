@@ -1,41 +1,22 @@
-"""Diagnóstico: descobre as camadas do painel de qualidade do ar do IAT (GeoPR) e mostra campos e amostras."""
-import json, re, urllib.request, urllib.parse
-P = 'https://geopr.iat.pr.gov.br/portal/sharing/rest/content/items/'
+import json, urllib.request, urllib.parse, collections
 UA = {'User-Agent': 'clima-londrina-biosimos'}
 def get(u, **q):
-    q.setdefault('f', 'json')
-    u = u + ('&' if '?' in u else '?') + urllib.parse.urlencode(q)
+    q.setdefault('f', 'json'); u = u + ('&' if '?' in u else '?') + urllib.parse.urlencode(q)
     return json.load(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=90))
-vistos, urls, itens = set(), set(), ['faf93ddb323f4dcf9fe2331bbee1e9c7']
-while itens:
-    i = itens.pop()
-    if i in vistos: continue
-    vistos.add(i)
-    try:
-        meta = get(P + i); data = get(P + i + '/data')
-    except Exception as e:
-        print('item', i, 'ERRO', e); continue
-    print('ITEM', i, meta.get('type'), '|', meta.get('title'), '|', meta.get('url'))
-    if meta.get('url'): urls.add(meta['url'])
-    txt = json.dumps(data)
-    for u in re.findall(r'https?://[^"\\]+?/(?:Feature|Map)Server(?:/\d+)?', txt): urls.add(u)
-    for j in set(re.findall(r'"itemId"\s*:\s*"([0-9a-f]{32})"', txt)): itens.append(j)
-for u in sorted(urls):
-    try:
-        d = get(u)
-        print('\nSERVIÇO', u, '|', d.get('name') or d.get('serviceDescription', '')[:80])
-        camadas = [u] if re.search(r'/\d+$', u) else [f"{u}/{l['id']}" for l in d.get('layers', []) + d.get('tables', [])]
-        for c in camadas:
-            m = get(c)
-            print('  CAMADA', c, '|', m.get('name'), '| campos:', [f['name'] for f in m.get('fields', [])])
-            try:
-                n = get(c + '/query', where='1=1', returnCountOnly='true')
-                am = get(c + '/query', where='1=1', outFields='*', resultRecordCount=3, returnGeometry='true', outSR=4326)
-                print('    total', n.get('count'), '| amostra:', json.dumps([x.get('attributes') for x in am.get('features', [])], ensure_ascii=False)[:1500])
-                lon = get(c + '/query', where="1=1", outFields='*', resultRecordCount=2000, returnGeometry='true', outSR=4326)
-                ld = [x for x in lon.get('features', []) if 'ONDRINA' in json.dumps(x.get('attributes'), ensure_ascii=False).upper()]
-                print('    Londrina:', len(ld), json.dumps(ld[:5], ensure_ascii=False)[:2500])
-            except Exception as e:
-                print('    consulta ERRO', e)
-    except Exception as e:
-        print('SERVIÇO', u, 'ERRO', e)
+S = 'https://geopr.iat.pr.gov.br/server/rest/services'
+h = get(S + '/Hosted')
+print('Hosted com termos de ar:', [s['name'] for s in h.get('services', []) if any(k in s['name'].lower() for k in ('boletim', 'iqa', 'iqar', 'ar_', 'qualidade', 'estac', 'polu', 'vento', 'monit', 'linha', 'tempo', 'serie', 'hist'))])
+B = S + '/Hosted/boletim_ultimas_24h/FeatureServer/0/query'
+r = get(B, where="estacao like '%LONDRINA%'", outFields='*', returnGeometry='true', outSR=4326, orderByFields='hora')
+por = collections.defaultdict(list)
+for f in r['features']: por[f['attributes']['estacao']].append(f)
+for est, fs in por.items():
+    a = fs[0]['attributes']
+    print('\nESTAÇÃO', est, '|', a['localizacao'], '|', fs[0]['geometry'])
+    cols = [c for c in ('so2_iqa', 'no2_iqa', 'o3_iqa', 'co_iqa', 'mp10_iqa', 'mp2_5_iqa', 'pts_iqa', 'temp', 'umid') if any(f['attributes'][c] is not None for f in fs)]
+    print('  medidos:', cols, '| registros:', len(fs))
+    for f in fs[-24:]:
+        x = f['attributes']; print('  ', x['hora'], x['iqa'], x['qualidade'], x['poluente'], x['conc'], {c: x[c] for c in cols})
+print('\nTodas as estações:', sorted({f['attributes']['estacao'] for f in get(B, where='1=1', outFields='estacao', returnGeometry='false', returnDistinctValues='true')['features']}))
+for s in h.get('services', []):
+    print('svc', s['name'], s['type'])
