@@ -9,10 +9,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
-      - run: pip install -q "numpy<2" rasterio shapely pyproj pillow pystac-client planetary-computer pysheds scipy
-      - run: |
+      - run: pip install -q "numpy<2" rasterio shapely pyproj pillow pystac-client planetary-computer pysheds scipy earthengine-api
+      - env: { EE_CHAVE: '${{ secrets.EE_CHAVE }}' }
+        run: |
           mkdir -p data/_diag
           python3 tools/alagamento_hand.py > data/_diag/alagamento.txt 2>&1 || true
+          python3 tools/ee_predios.py > data/_diag/ee.txt 2>&1 || true
           python3 tools/canais_vento.py > data/_diag/vento.txt 2>&1 || true
       - run: |
           git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

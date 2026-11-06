@@ -68,6 +68,20 @@ try:
     print('GHSL altura: máx', float(alt.max()), 'média urbana', float(alt[urb > 0.5].mean()) if (urb > 0.5).any() else None, flush=True)
 except Exception as e:
     print('GHSL indisponível:', e, flush=True)
+# preferir Google Open Buildings (Earth Engine, 4 m) quando disponível
+fonte_alt = 'GHSL 2018 (100 m)' if tem_alt else None
+if os.path.exists('/tmp/terreno/predios_altura.tif'):
+    with rasterio.open('/tmp/terreno/predios_altura.tif') as f: alt_ob = f.read(1)
+    with rasterio.open('/tmp/terreno/predios_ocupacao.tif') as f: ocup_ob = f.read(1)
+    # z0 por morfometria simplificada (Macdonald): cresce com a ocupação até ~25% e depois estabiliza
+    z0_ob = 0.1 * alt_ob * np.clip(ocup_ob / 0.25, 0, 1)
+    alt = np.where(ocup_ob > 0.02, alt_ob, 0).astype('float32'); urb = np.maximum(urb, np.clip(ocup_ob / 0.3, 0, 1))
+    z0 = np.where(ocup_ob > 0.05, np.maximum(z0, np.clip(z0_ob, 0.05, 4.0)), z0)
+    tem_alt = False; fonte_alt = 'Google Open Buildings 2.5D 2023 (Earth Engine)'
+    print('altura: Open Buildings; média nas áreas ocupadas', float(alt_ob[ocup_ob > 0.08].mean()), flush=True)
+    tem_alt_ob = True
+else:
+    tem_alt_ob = False
 if tem_alt:
     zurb = np.clip(0.1 * alt, 0.3, 3.0)
     z0 = np.where(urb > 0.3, urb * zurb + (1 - urb) * z0, z0)
@@ -159,7 +173,7 @@ def vetoriza(mask, minimo_ha, tipo):
         if rp: p['Microbacia'] = rp
         bb = bairros_de(g)
         if bb: p['Bairros'] = ', '.join(bb)
-        p['Altura média das edificações (m)'] = round(float(alt[m][urb[m] > 0.3].mean()), 1) if tem_alt and (urb[m] > 0.3).any() else None
+        p['Altura média das edificações (m)'] = round(float(alt[m][alt[m] > 0].mean()), 1) if (tem_alt or tem_alt_ob) and (alt[m] > 0).any() else None
         p['Área urbanizada (%)'] = round(float((urb[m] > 0.5).mean()) * 100)
         feats.append({'type': 'Feature', 'geometry': mapping(g), 'properties': {k: v for k, v in p.items() if v is not None}})
     feats.sort(key=lambda f: -f['properties']['Área (ha)'])
@@ -192,6 +206,6 @@ for s_, ang, w in DIRS:
 json.dump({'type': 'FeatureCollection', 'features': setas}, open('data/vento/direcoes.geojson', 'w'), ensure_ascii=False)
 res = {'direcoes': [{'setor': s, 'frequencia_pct': round(freq[s], 1)} for s, _, _ in DIRS], 'periodo_rosa': rosa.get('periodo'),
        'canais_urbanos': sum(1 for f in cor if 'Canal' in f['properties']['Tipo']), 'entradas_ar': sum(1 for f in cor if 'Entrada' in f['properties']['Tipo']), 'area_canais_ha': sum(f['properties']['Área (ha)'] for f in cor), 'barreiras': len(bar),
-       'altura_edificacoes': bool(tem_alt)}
+       'altura_edificacoes': fonte_alt}
 json.dump(res, open('data/vento/resumo.json', 'w'), ensure_ascii=False, indent=1)
 print(res); print([f['properties'] for f in cor[:8]]); print([f['properties'] for f in bar[:5]])
