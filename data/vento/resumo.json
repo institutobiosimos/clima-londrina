@@ -14,9 +14,9 @@
   }
  ],
  "periodo_rosa": "2016–2025",
- "canais_urbanos": 4,
- "entradas_ar": 17,
- "area_canais_ha": 6267,
- "barreiras": 14,
- "altura_edificacoes": "GHSL 2018 (100 m)"
+ "canais_urbanos": 3,
+ "entradas_ar": 15,
+ "area_canais_ha": 6425,
+ "barreiras": 12,
+ "altura_edificacoes": "Google Open Buildings 2.5D 2023 (Earth Engine)"
 }
