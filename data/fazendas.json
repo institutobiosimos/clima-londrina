@@ -169,7 +169,7 @@
      "cor": "#b2182b"
     }
    ],
-   "fonte": "Modelo Biosimos: rosa dos ventos ERA5 + rugosidade (MapBiomas 2023, altura das edificações GHSL/JRC 2018) + relevo Copernicus DEM"
+   "fonte": "Modelo Biosimos: rosa dos ventos ERA5 + rugosidade (MapBiomas 2023 e altura das edificações Google Open Buildings 2023 via Earth Engine) + relevo Copernicus DEM"
   },
   {
    "id": "vento-canais",
@@ -229,6 +229,33 @@
     "Frequência (% dos dias)"
    ],
    "fonte": "ERA5 (Copernicus/ECMWF) via Open-Meteo, últimos 10 anos"
+  },
+  {
+   "id": "vento-predios",
+   "secao": "Ventos e ventilação",
+   "nome": "Altura das edificações (2023)",
+   "tipo": "imagem",
+   "arquivo": "data/vento/predios.json",
+   "opacidade": 0.85,
+   "legenda_itens": [
+    {
+     "rotulo": "até 8 m (1–2 pavimentos)",
+     "cor": "#fed976"
+    },
+    {
+     "rotulo": "8–15 m",
+     "cor": "#fd8d3c"
+    },
+    {
+     "rotulo": "15–30 m",
+     "cor": "#e31a1c"
+    },
+    {
+     "rotulo": "acima de 30 m (prédios altos)",
+     "cor": "#800026"
+    }
+   ],
+   "fonte": "Google Open Buildings 2.5D Temporal (2023), processado no Google Earth Engine – média por quadrícula de 30 m"
   },
   {
    "id": "vegetacao",
@@ -588,6 +615,10 @@
    {
     "nome": "JRC/Comissão Europeia – GHSL, altura das edificações (GHS-BUILT-H 2018)",
     "link": "https://human-settlement.emergency.copernicus.eu/"
+   },
+   {
+    "nome": "Google Open Buildings 2.5D Temporal (2023) – via Google Earth Engine",
+    "link": "https://sites.research.google/gr/open-buildings/"
    }
   ],
   "contato": "contato@institutobiosimos.org.br",
@@ -628,7 +659,7 @@
    "vento-barreiras",
    "vento-direcoes"
   ],
-  "aviso": "Modelo indicativo: combina a direção dos ventos, a rugosidade da superfície (uso do solo e altura média das edificações em quadras de 100 m) e o relevo. Não substitui simulação de escoamento (CFD) nem medições locais; serve para apontar onde preservar e onde abrir caminhos para o vento.",
+  "aviso": "Modelo indicativo: combina a direção dos ventos, a rugosidade da superfície (uso do solo e altura das edificações em quadrículas de 30 m, Google Open Buildings 2023) e o relevo. Não substitui simulação de escoamento (CFD) nem medições locais; serve para apontar onde preservar e onde abrir caminhos para o vento.",
   "grade": "data/vento/grade.json"
  }
 }
