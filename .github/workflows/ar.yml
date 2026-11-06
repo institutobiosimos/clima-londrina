@@ -1,0 +1,22 @@
+name: Qualidade do ar (IAT) – coleta diária
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '17 4 * * *'
+permissions: { contents: write }
+jobs:
+  ar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -q "numpy<2" pillow earthengine-api
+      - env: { EE_CHAVE: '${{ secrets.EE_CHAVE }}' }
+        run: |
+          mkdir -p data/_diag
+          python3 tools/qualidade_ar.py > data/_diag/ar.txt 2>&1 || true
+          if [ ! -f data/ar/no2.json ] || [ "$(date +%d)" = "08" ]; then python3 tools/ee_no2.py > data/_diag/no2.txt 2>&1 || true; fi
+      - run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ar data/_diag; git commit -q -m "Qualidade do ar: coleta diária" || true; git pull -q --rebase origin main || true; git push
