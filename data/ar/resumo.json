@@ -1,10 +1,10 @@
 {
- "atualizado_utc": "2026-11-08T11:22Z",
- "novos_registros": 48,
+ "atualizado_utc": "2026-11-09T12:59Z",
+ "novos_registros": 50,
  "estacoes": {
   "LONDRINA": {
    "horas_com_dado": 55,
-   "dias": 4,
+   "dias": 5,
    "inicio": "2026-11-05",
    "classes": {
     "BOA": 55
@@ -13,13 +13,13 @@
    "iqa_max": 27.0
   },
   "LONDRINA UEL": {
-   "horas_com_dado": 63,
-   "dias": 4,
+   "horas_com_dado": 88,
+   "dias": 5,
    "inicio": "2026-11-05",
    "classes": {
-    "BOA": 63
+    "BOA": 88
    },
-   "iqa_medio": 22.5,
+   "iqa_medio": 20.6,
    "iqa_max": 29.0
   }
  }
