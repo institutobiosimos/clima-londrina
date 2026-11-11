@@ -1,0 +1,30 @@
+name: Gravar vídeo de apresentação
+on: { workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install -q playwright piper-tts numpy
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y -qq ffmpeg fonts-noto fonts-noto-color-emoji
+          mkdir -p /tmp/voz && cd /tmp/voz
+          V=https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium
+          curl -sL -o voz.onnx $V/pt_BR-faber-medium.onnx && curl -sL -o voz.onnx.json $V/pt_BR-faber-medium.onnx.json
+      - run: VELOCIDADE=0.98 python3 tools/video/narrar.py tools/video/apresentacao.json /tmp/voz/voz.onnx /tmp/falas
+      - run: |
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          sleep 2
+          python3 tools/video/gravar_apresentacao.py http://localhost:8765 /tmp/vid /tmp/falas/duracoes.json --quadros /tmp/quadros
+          python3 tools/video/trilha.py 400 /tmp/trilha.wav
+          mkdir -p tutorial
+          python3 tools/video/montar_apresentacao.py "$(ls /tmp/vid/*.webm | head -1)" /tmp/vid/marcas.json /tmp/falas /tmp/trilha.wav tutorial/apresentacao_clima_londrina.mp4
+          ls -la tutorial
+      - uses: actions/upload-artifact@v4
+        with: { name: quadros, path: /tmp/quadros }
+      - run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tutorial; git commit -q -m "Vídeo de apresentação" || true; git pull -q --rebase origin main || true; git push
