@@ -3,13 +3,14 @@ on: { workflow_dispatch: {} }
 permissions: { contents: write }
 jobs:
   video:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - run: |
           pip install -q playwright piper-tts numpy
           python -m playwright install --with-deps chromium
+          sudo apt-get update -qq || true
           sudo apt-get install -y -qq ffmpeg fonts-noto fonts-noto-color-emoji
           mkdir -p /tmp/voz && cd /tmp/voz
           V=https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium
