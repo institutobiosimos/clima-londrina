@@ -53,7 +53,10 @@ with sync_playwright() as p:
         """espera até t0 + seg segundos"""
         pg.wait_for_timeout(max(0, int((t0 + seg - time.time()) * 1000)))
 
-    js = lambda s, a=None: pg.evaluate(s, a) if a is not None else pg.evaluate(s)
+    def js(s, a=None):
+        t1 = time.time(); r = pg.evaluate(s, a) if a is not None else pg.evaluate(s)
+        if time.time() - t1 > 0.8: print(f'  lento {time.time() - t1:.1f}s  {s[:70]!r}', flush=True)
+        return r
     def camada(i, on=True):
         js("([i,on]) => { if (opcionaisAtivas.has(i) !== on) document.querySelector(`.camada-row[data-id=\"${i}\"]`)?.click(); }", [i, on])
     def voar(c, z, pitch=0, bearing=0, dur=4000):
@@ -68,7 +71,7 @@ with sync_playwright() as p:
     # ---------- abertura
     esp, d = fala('intro', 8)
     t = time.time(); quadro('intro'); pg.wait_for_timeout(1500)
-    voar(CIDADE, 11.6, 50, -20, 7000); ate(t, d * .85)
+    voar(CIDADE, 11.6, 30, -20, 7000); ate(t, d * .85)
     js("() => V.sairIntro()"); esp()
 
     # ---------- o clima já mudou
@@ -84,15 +87,15 @@ with sync_playwright() as p:
     camada('calor')
     esp, d = fala('calor'); t = time.time()
     js("() => V.capitulo('01 · CALOR', 'Onde a cidade esquenta', 'Temperatura da superfície no verão, medida por satélite')")
-    voar([-51.162, -23.312], 12.6, 55, 15, 6000); ate(t, d * .7); quadro('calor'); esp()
+    voar([-51.162, -23.312], 12.6, 30, 15, 6000); ate(t, d * .7); quadro('calor'); esp()
 
     esp, d = fala('bairros'); t = time.time()
     camada('bairros-calor')
     js("() => V.capitulo('01 · CALOR', '8,6 °C de diferença entre bairros', 'Ranking dos 66 bairros pela temperatura da superfície')")
     c1 = js("() => V_BAIRRO('Vila Casoni')"); c2 = js("() => V_BAIRRO('São Miguel')")
-    voar(c1, 14.2, 50, 30, 3500); pg.wait_for_timeout(3000)
+    voar(c1, 14.2, 30, 30, 3500); pg.wait_for_timeout(3000)
     js("(c) => V.alvo(c, 'Vila Casoni · entre os mais quentes', '41,8 °C')", c1); ate(t, d * .5); quadro('casoni')
-    voar(c2, 14.0, 50, -10, 3500); pg.wait_for_timeout(3000)
+    voar(c2, 14.0, 30, -10, 3500); pg.wait_for_timeout(3000)
     js("(c) => V.alvo(c, 'São Miguel · entre os mais frescos', '33,2 °C')", c2); esp(0.6); quadro('saomiguel')
     js("() => V.limparAlvos()")
 
@@ -100,7 +103,7 @@ with sync_playwright() as p:
     camada('bairros-calor', False); camada('calor', False); camada('vegetacao')
     esp, d = fala('verde'); t = time.time()
     js("() => V.capitulo('02 · VERDE', 'O verde refresca a cidade', 'Cobertura vegetal medida por satélite (NDVI)')")
-    voar([-51.165, -23.31], 12.3, 40, 0, 5000)
+    voar([-51.165, -23.31], 12.3, 30, 0, 5000)
     js("() => { V.chips([{ v: '−4 °C', rot: 'nos bairros mais arborizados' }, { v: '+4 °C', rot: 'onde falta árvore' }]); }")
     ate(t, d * .35); js("() => V.mostrarChip(0)"); ate(t, d * .55); js("() => V.mostrarChip(1)"); quadro('verde'); esp(); js("() => V.sairChips()")
 
@@ -109,7 +112,7 @@ with sync_playwright() as p:
     esp, d = fala('vento'); t = time.time()
     js("() => V.capitulo('03 · VENTO', 'Por onde a cidade respira', 'Canais de ventilação e áreas de ar parado (modelo indicativo)')")
     voar([-51.16, -23.31], 12.0, 0, 0, 3000); pg.wait_for_timeout(3300)
-    js("async () => { await ligarAnimacaoVento(true, dadosGerais.painel_vento); ventoAnim.dir = 90; ventoAnim.kmh = 16; }")
+    js("async () => { await ligarAnimacaoVento(true, dadosGerais.painel_vento); ventoAnim.dir = 90; ventoAnim.kmh = 16; ventoAnim.parts = ventoAnim.parts.slice(0, 1000); }")
     js("() => V.chips([{ v: '15', rot: 'entradas de ar fresco' }, { v: '3', rot: 'grandes canais de ventilação' }, { v: '12', rot: 'áreas de ar parado' }])")
     ate(t, d * .45); js("() => V.mostrarChip(0)"); ate(t, d * .55); js("() => V.mostrarChip(1)"); ate(t, d * .78); js("() => V.mostrarChip(2)"); quadro('vento')
     esp(); js("() => { V.sairChips(); ligarAnimacaoVento(false); }")
@@ -119,7 +122,7 @@ with sync_playwright() as p:
     camada('alagamento'); camada('drenagem')
     esp, d = fala('agua'); t = time.time()
     js("() => V.capitulo('04 · ÁGUA', 'Onde a chuva forte alaga', 'Áreas baixas junto aos córregos e a rede de drenagem natural')")
-    voar([-51.19, -23.305], 13.2, 55, 40, 5500); ate(t, d * .6); quadro('agua'); girar(-25, 5000); esp()
+    voar([-51.19, -23.305], 13.2, 30, 40, 5500); ate(t, d * .6); quadro('agua'); girar(-25, 5000); esp()
 
     # ---------- ar
     camada('alagamento', False); camada('drenagem', False); camada('ar-no2'); camada('ar-estacoes')
@@ -132,7 +135,7 @@ with sync_playwright() as p:
     camada('ar-no2', False); camada('ar-estacoes', False); painel(False); camada('rural-vulnerab')
     esp, d = fala('campo'); t = time.time()
     js("() => V.capitulo('06 · CAMPO', 'O campo também sente', 'Vulnerabilidade climática das microbacias rurais')")
-    voar([-51.17, -23.40], 9.9, 35, 0, 5000)
+    voar([-51.17, -23.40], 9.9, 30, 0, 5000)
     js("() => V.chips([{ v: '176', rot: 'microbacias rurais' }, { v: '59', rot: 'com vulnerabilidade alta' }])")
     ate(t, d * .25); js("() => V.mostrarChip(0)"); ate(t, d * .4); js("() => V.mostrarChip(1)"); quadro('campo')
     ate(t, d * .62); js("() => V.sairChips()"); camada('rural-vulnerab', False); painel(True, '#cardZarc')

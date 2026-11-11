@@ -17,5 +17,5 @@ filt.append('[mus][chave]sidechaincompress=threshold=0.03:ratio=7:attack=25:rele
 filt.append('[voz][musd]amix=inputs=2:normalize=0,loudnorm=I=-15:TP=-1.5[aout]')
 filt.append(f'[0:v]scale=1920:1080:flags=lanczos,fade=t=in:st=0:d=0.6,fade=t=out:st={max(0, dur - 1.2):.2f}:d=1.2,format=yuv420p[vout]')
 cmd = ['ffmpeg', '-v', 'error', '-y', *ins, '-filter_complex', ';'.join(filt), '-map', '[vout]', '-map', '[aout]', '-t', f'{dur:.2f}',
-       '-r', '30', '-c:v', 'libx264', '-crf', '20', '-preset', 'medium', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', saida + '.tmp.mp4']
+       '-r', '30', '-c:v', 'libx264', '-crf', '24', '-preset', 'slow', '-maxrate', '2500k', '-bufsize', '5000k', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', saida + '.tmp.mp4']
 subprocess.run(cmd, check=True); os.replace(saida + '.tmp.mp4', saida); print('ok', saida, round(dur, 1), 's')
