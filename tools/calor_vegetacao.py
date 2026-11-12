@@ -66,6 +66,9 @@ PAL_NDVI = [hexrgb(c) for c in ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fe
 urb = ~geometry_mask([mapping(per)], (h4, w4), t4, invert=False)
 p5, p95 = np.nanpercentile(lst4[np.isfinite(lst4) & ~fora], [3, 97])
 colorir(lst4, p5, p95, PAL_LST).save('data/calor/lst.png', optimize=True)
+# valores reais (décimos de °C) para os cálculos de exposição da população
+with rasterio.open('data/calor/lst.tif', 'w', driver='GTiff', height=h4, width=w4, count=1, dtype='int16', crs='EPSG:4326', transform=t4, nodata=-9999, compress='deflate', predictor=2) as dst:
+    dst.write(np.where(np.isfinite(lst4) & ~fora, np.round(lst4 * 10), -9999).astype('int16'), 1)
 colorir(ndvi4, 0.05, 0.85, PAL_NDVI, 185).save('data/calor/ndvi.png', optimize=True)
 datas = sorted(i.datetime.date().isoformat() for i in itens)
 meta = {'cantos': coords, 'cenas': len(lsts), 'periodo': f'verões {ano-3}–{ano} (dez–mar)', 'datas': datas}

@@ -275,11 +275,16 @@ try:
             linhas = [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)]
         cab = [str(c or '').strip().lower() for c in linhas[0]]
         log('IVS arquivo', n, cab[:25])
-        ic = next((i for i, c in enumerate(cab) if c in ('ibge', 'cod_ibge', 'codmun', 'cod_mun', 'municipio_codigo', 'codigo_ibge', 'ibge7', 'cod_municipio')), None)
+        ic = next((i for i, c in enumerate(cab) if c in ('municipio', 'ibge', 'cod_ibge', 'codmun', 'cod_mun', 'codigo_ibge', 'ibge7', 'cod_municipio')), None)
+        rot = [i for i, c in enumerate(cab) if c.startswith('label_')]
+        inv = cab.index('udh') if 'udh' in cab else None
         ii = next((i for i, c in enumerate(cab) if c == 'ivs'), None)
         ia = next((i for i, c in enumerate(cab) if c in ('ano', 'year')), None)
         if ic is None or ii is None: continue
-        regs = [l for l in linhas[1:] if str(l[ic]).split('.')[0] in (COD, COD[:6])]
+        regs = [l for l in linhas[1:] if str(l[ic]).split('.')[0] in (COD, COD[:6])
+                and (inv is None or l[inv] in (None, '', 0, '0'))
+                and all(str(l[i] or 'total').strip().lower() in ('total', 'none', '', 'todos') for i in rot)]
+        log('IVS linhas de Londrina', len(regs), [[l[i] for i in ([ia] if ia is not None else []) + rot] + [l[ii]] for l in regs][:8])
         regs = [l for l in regs if num(l[ii]) > 0]
         if regs:
             regs.sort(key=lambda l: num(l[ia]) if ia is not None else 0)
