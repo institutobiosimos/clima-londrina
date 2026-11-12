@@ -1261,6 +1261,52 @@ async function renderRanking() {
         if (bt && !opcionaisAtivas.has(o.id)) bt.click();
     }));
 }
+async function renderSocial() {
+    const card = document.getElementById('cardSocial'), cfg = dadosGerais.painel_social;
+    if (!card || !cfg) return;
+    let r, d; try { [r, d] = await Promise.all([cfg.resumo, cfg.desastres].map(async u => (await fetch(u, { cache: 'no-cache' })).json())); } catch { return; }
+    const e = r.exposicao, ds = r.desastres, ac = r.area_construida_km2 || {};
+    const mil = v => v >= 1000 ? `${fmt(v / 1000, v >= 100000 ? 0 : 1)} mil` : fmt(v, 0);
+    const rs = v => v >= 1e6 ? `R$ ${fmt(v / 1e6, v >= 1e8 ? 0 : 1)} milhões` : v >= 1e3 ? `R$ ${fmt(v / 1e3, 0)} mil` : `R$ ${fmt(v, 0)}`;
+    const pct = (a, b) => b ? fmt(100 * a / b, 0) + '%' : '–';
+    const evs = (d.eventos || []).filter(x => x.afetados > 0 || x.total_rs > 0).sort((a, b) => (b.ano || 0) - (a.ano || 0));
+    const tipos = Object.entries(d.por_tipo || {}).sort((a, b) => b[1].eventos - a[1].eventos);
+    const maxEv = Math.max(1, ...tipos.map(t => t[1].eventos));
+    card.hidden = false;
+    card.innerHTML = `<h2>${esc(cfg.titulo)}</h2><p class="hint">${esc(cfg.texto)}</p>
+        <h3>Pessoas expostas</h3>
+        <div class="clima-kpis">
+            <div><b>${mil(e.pop_calor_2)}</b><span>moradores (${pct(e.pop_calor_2, e.pop_total)}) vivem onde a superfície fica 2 °C ou mais acima da média urbana no verão</span></div>
+            <div><b>${mil(e.sens_calor_2)}</b><span>deles são crianças até 4 anos ou pessoas com 60 anos ou mais – os mais sensíveis ao calor</span></div>
+            <div><b>${mil(e.pop_alagamento)}</b><span>moradores em áreas baixas junto aos córregos, sujeitas a alagamento (estimativa)</span></div>
+        </div>
+        <p class="hint">${mil(e.pop_prioridade_muito_alta)} pessoas moram nos ${e.setores_prioridade_muito_alta} setores de prioridade climática <b>muito alta</b> (mais calor, mais crianças e idosos, mais densidade): é onde arborização, sombra e cuidado com a saúde rendem mais.</p>
+        <div class="soc-bts"><button type="button" class="soc-bt" data-c="${esc(cfg.camada)}">Ver prioridade por setor no mapa</button></div>
+        ${ac['1985'] && ac['2025'] ? `<h3>A cidade construída cresceu</h3>
+        <div class="clima-kpis">
+            <div><b>${fmt(ac['1985'], 0)} → ${fmt(ac['2025'], 0)} km²</b><span>de área coberta por construções (telhados) entre 1985 e 2025</span></div>
+            <div><b>+${fmt(100 * (ac['2025'] / ac['1985'] - 1), 0)}%</b><span>mais superfície que aquece e impermeabiliza – mais calor e mais enxurrada</span></div>
+        </div>
+        <div class="soc-bts"><button type="button" class="soc-bt" data-c="${esc(cfg.camada_expansao)}">Ver a expansão no mapa</button></div>` : ''}
+        <h3>Desastres registrados oficialmente (${ds.desde || ''}–${ds.ate || ''})</h3>
+        <div class="clima-kpis">
+            <div><b>${fmt(ds.eventos, 0)}</b><span>ocorrências reconhecidas (vendavais, enxurradas, alagamentos)</span></div>
+            <div><b>${rs(ds.prejuizo_total_rs)}</b><span>em danos e prejuízos declarados, corrigidos para dez/2022</span></div>
+            <div><b>${mil(ds.afetados)}</b><span>pessoas afetadas · ${fmt(ds.casas_danificadas_destruidas, 0)} moradias danificadas ou destruídas</span></div>
+        </div>
+        <div class="soc-tipos">${tipos.map(([t, v]) => `<div><span>${esc(t)}</span><i style="width:${Math.round(100 * v.eventos / maxEv)}%"></i><b>${v.eventos}</b></div>`).join('')}</div>
+        <details class="clima-top"><summary>Ocorrências com danos ou pessoas afetadas</summary><ol>${evs.map(x => `<li>${esc(x.data || x.ano)} – <b>${esc(x.tipo)}</b>${x.afetados ? ` · ${mil(x.afetados)} afetados` : ''}${x.total_rs ? ` · ${rs(x.total_rs)}` : ''}</li>`).join('')}</ol></details>
+        ${r.ivs ? `<p class="hint">Índice de Vulnerabilidade Social de Londrina (Ipea, ${r.ivs.ano || ''}): <b>${fmt(r.ivs.valor, 3)}</b> – vulnerabilidade ${esc(r.ivs.faixa || '')}. A média da cidade esconde diferenças grandes entre bairros, por isso o mapa usa os setores do Censo 2022.</p>` : ''}
+        <p class="hint">Fontes: ${(r.fontes || []).map(esc).join(' · ')}. Os prejuízos são os declarados pelo município ao governo federal (S2iD) e podem subestimar as perdas reais. A população em áreas alagáveis é estimada a partir do modelo de terreno e da distribuição de moradores do GHSL.</p>`;
+    card.querySelectorAll('.soc-bt').forEach(b => b.addEventListener('click', () => {
+        for (const outra of [cfg.camada, cfg.camada_expansao]) {
+            if (outra !== b.dataset.c && opcionaisAtivas.has(outra)) document.querySelector(`.camada-row[data-id="${outra}"]`)?.click();
+        }
+        const bt = document.querySelector(`.camada-row[data-id="${b.dataset.c}"]`);
+        if (bt && !opcionaisAtivas.has(b.dataset.c)) bt.click();
+        map.flyTo({ center: [-51.165, -23.315], zoom: 11.6, duration: 900 });
+    }));
+}
 async function renderRural() {
     const card = document.getElementById('cardRural'), cfg = dadosGerais.painel_rural;
     if (!card || !cfg) return;
@@ -1571,7 +1617,7 @@ async function iniciar() {
     renderTermos();
     renderLicencas();
     renderClima();
-    renderRanking(); renderRural(); renderZarc(); renderVento(); renderAr();
+    renderRanking(); renderSocial(); renderRural(); renderZarc(); renderVento(); renderAr();
     renderImpactos();
     if (fazendas.length || dados.busca_camada) document.getElementById('cardLista')?.removeAttribute('hidden');
     renderModosCor();

@@ -177,7 +177,7 @@ if cand:
 NOMES = {1: 'Baixa', 2: 'Moderada', 3: 'Média', 4: 'Alta', 5: 'Muito alta'}
 for cs, s in setores.items():
     if s['pop'] <= 0: continue
-    p = {'Setor censitário': cs, 'Bairro (IBGE)': s['bairro'] or '–', 'População (Censo 2022)': int(s['pop']),
+    p = {'nome': f"Setor censitário – {s['bairro']}" if s['bairro'] else 'Setor censitário', 'Setor censitário': cs, 'Bairro (IBGE)': s['bairro'] or '–', 'População (Censo 2022)': int(s['pop']),
          'Crianças até 4 anos': int(s['crian']), 'Pessoas com 60 anos ou mais': int(s['idos']),
          'População sensível ao calor (%)': round(100 * s['sens'], 1), 'Densidade (hab/ha)': round(s['dens'], 1),
          'Moradores em áreas baixas sujeitas a alagamento (estimativa)': int(round(s['pop'] * s['frac_alag']))}
@@ -285,8 +285,8 @@ try:
         amostra = [l for l in linhas[1:] if inome is not None and 'londrina' in str(l[inome]).lower()]
         log('IVS amostra Londrina', len(amostra), [l[:20] for l in amostra[:4]])
         regs = [l for l in linhas[1:] if (str(l[ic]).split('.')[0] in (COD, COD[:6]) or (inome is not None and str(l[inome]).strip().lower() in ('londrina (pr)', 'londrina - pr', 'londrina/pr')))
-                and (inv is None or l[inv] in (None, '', 0, '0'))
-                and all(str(l[i] if l[i] is not None else 'total').strip().lower() in ('total', 'none', '', 'todos', 'todas') for i in rot)]
+                and (inv is None or str(l[inv]).strip().lower() in ('none', '', '0', '-', 'geral'))
+                and all(str(l[i] if l[i] is not None else 'total').strip().lower().startswith(('total', 'none', 'todos', 'todas')) or str(l[i]).strip() in ('', '-') for i in rot)]
         log('IVS linhas de Londrina', len(regs), [[l[i] for i in ([ia] if ia is not None else []) + rot] + [l[ii]] for l in regs][:8])
         regs = [l for l in regs if num(l[ii]) > 0]
         if regs:

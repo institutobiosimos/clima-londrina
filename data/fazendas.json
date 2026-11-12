@@ -149,6 +149,109 @@
    "fonte": "Landsat 8/9 (USGS/NASA) + bairros oficiais (IPPUL)"
   },
   {
+   "id": "social-prioridade",
+   "secao": "Pessoas e vulnerabilidade",
+   "nome": "Prioridade climática por setor censitário (calor × população sensível)",
+   "arquivo": "data/social/setores_prioridade.geojson",
+   "preenchimento": 0.6,
+   "largura": 0.4,
+   "cor": "#ffffff",
+   "clicavel": true,
+   "enquadrar": false,
+   "cor_numerica": {
+    "campo": "classe",
+    "paradas": [
+     [
+      0,
+      "#cfd8dc"
+     ],
+     [
+      1,
+      "#1a9850"
+     ],
+     [
+      2,
+      "#a6d96a"
+     ],
+     [
+      3,
+      "#fee08b"
+     ],
+     [
+      4,
+      "#fc8d59"
+     ],
+     [
+      5,
+      "#d73027"
+     ]
+    ]
+   },
+   "campos": [
+    "Prioridade climática",
+    "Bairro (IBGE)",
+    "População (Censo 2022)",
+    "Pessoas com 60 anos ou mais",
+    "Crianças até 4 anos",
+    "População sensível ao calor (%)",
+    "Densidade (hab/ha)",
+    "Temperatura média da superfície (°C)",
+    "Diferença para a média urbana (°C)",
+    "Moradores em áreas baixas sujeitas a alagamento (estimativa)",
+    "Setor censitário"
+   ],
+   "legenda_itens": [
+    {
+     "rotulo": "baixa",
+     "cor": "#1a9850"
+    },
+    {
+     "rotulo": "moderada",
+     "cor": "#a6d96a"
+    },
+    {
+     "rotulo": "média",
+     "cor": "#fee08b"
+    },
+    {
+     "rotulo": "alta",
+     "cor": "#fc8d59"
+    },
+    {
+     "rotulo": "muito alta",
+     "cor": "#d73027"
+    },
+    {
+     "rotulo": "rural / sem medição",
+     "cor": "#cfd8dc"
+    }
+   ],
+   "fonte": "Índice Biosimos: temperatura da superfície (Landsat, 50%) + crianças até 4 anos e pessoas com 60+ (25%) + densidade (25%), em quintis dos setores urbanos. IBGE – Censo 2022 (setores censitários); GHSL 2025 para distribuir moradores nas áreas alagáveis."
+  },
+  {
+   "id": "expansao-urbana",
+   "secao": "Pessoas e vulnerabilidade",
+   "nome": "Expansão da área construída (1985 → 2000 → 2025)",
+   "tipo": "imagem",
+   "arquivo": "data/social/expansao.json",
+   "opacidade": 0.85,
+   "legenda_itens": [
+    {
+     "rotulo": "já construído em 1985",
+     "cor": "#787878"
+    },
+    {
+     "rotulo": "novo entre 1985 e 2000",
+     "cor": "#fdae61"
+    },
+    {
+     "rotulo": "novo entre 2000 e 2025",
+     "cor": "#d73027"
+    }
+   ],
+   "fonte": "GHSL – GHS-BUILT-S R2023A (Comissão Europeia / JRC), grade de ~100 m; células com 15% ou mais de área coberta por construções"
+  },
+  {
    "id": "ar-estacoes",
    "secao": "Qualidade do ar",
    "nome": "Estações de monitoramento do IAT",
@@ -791,5 +894,13 @@
   "iat": "https://geopr.iat.pr.gov.br/server/rest/services/Hosted/boletim_ultimas_24h/FeatureServer/0/query",
   "historico": "data/ar/historico.csv",
   "no2": "data/ar/no2_serie.json"
+ },
+ "painel_social": {
+  "titulo": "Quem é afetado e quanto custa",
+  "texto": "Pessoas expostas ao calor e aos alagamentos (Censo 2022), crescimento da área construída e o histórico oficial de desastres em Londrina.",
+  "resumo": "data/social/resumo_social.json",
+  "desastres": "data/social/desastres.json",
+  "camada": "social-prioridade",
+  "camada_expansao": "expansao-urbana"
  }
 }
