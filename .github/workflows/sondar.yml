@@ -8,15 +8,20 @@ jobs:
           set +e
           pip install -q openpyxl pandas >/dev/null 2>&1
           F=https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Agregados_por_Setores_Censitarios
-          echo "== MALHA"; curl -s -m 60 $F/malha_com_atributos/ | grep -o 'href="[^"]*"' | sed -n '6,20p'
-          curl -s -m 60 $F/malha_com_atributos/setores/ | grep -o 'href="[^"]*"' | sed -n '6,20p'
-          echo "== DIC"; curl -s -m 120 -o dic.xlsx $F/dicionario_de_dados_agregados_por_setores_censitarios_20260520.xlsx
+          echo "== MALHAF"; for s in csv gpkg; do curl -s -m 60 $F/malha_com_atributos/setores/$s/ | grep -o 'href="[^"]*"' | sed -n '6,40p' | tr '\n' ' '; echo; done
+          curl -s -m 60 $F/malha_com_atributos/setores/gpkg/BR/ | grep -o 'href="[^"]*"' | sed -n '6,12p' | tr '\n' ' '; echo
+          curl -s -m 120 -o dic.xlsx $F/dicionario_de_dados_agregados_por_setores_censitarios_20260520.xlsx
+          curl -s -m 120 -o dicm.xlsx $F/malha_com_atributos/Dicionario_de_dados_malha_agregados.xlsx
           python3 - <<'PY'
           import pandas as pd
-          x = pd.read_excel('dic.xlsx', sheet_name=None, header=None)
-          for n, df in x.items():
-              print('### SHEET', n, df.shape)
-              s = df.astype(str).agg(' | '.join, axis=1)
-              for l in s[s.str.contains('V010|V0001|V0002|V0003|V0005|V0006|60 a|0 a 4|moradores|Rede geral|esgot|rendimento|Total de pessoas', case=False, regex=True)].head(40): print('  ', l[:230])
+          x = pd.read_excel('dic.xlsx', sheet_name='Dicionário não PCT', header=None).astype(str)
+          s = x.agg(' | '.join, axis=1)
+          print('== TEMAS', x[1].unique()[:30])
+          for pat in ['Demografia.*(60 a 64|65 a 69|70 anos|0 a 4|Sexo masculino, 0 a)', 'esgot.*(Rede geral|fossa)', 'Rendimento|rendimento']:
+              print('==', pat)
+              for l in s[s.str.contains(pat, case=False, regex=True)].head(14): print('  ', l[:200])
+          m = pd.read_excel('dicm.xlsx', sheet_name=None, header=None)
+          for n, df in m.items():
+              print('### MALHA', n, df.shape)
+              for l in df.astype(str).agg(' | '.join, axis=1).head(60): print('  ', l[:180])
           PY
-          echo "== BAIRRO"; curl -s -m 60 $F/Agregados_por_Bairro_csv/ | grep -o 'href="[^"]*"' | sed -n '6,25p'
