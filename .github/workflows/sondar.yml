@@ -7,7 +7,11 @@ jobs:
       - run: |
           set +e
           curl -s -m 60 https://ivs.ipea.gov.br/js/app.9c86c648.js > a.js
-          echo "== DEFS"; grep -o '\(const\|let\|,\)\s*\(xr\|Ar\|Go\|Hi\|Jo\)\s*=\s*[^,;]*' a.js | head
-          echo "== GETS"; grep -o 'get(`\${[A-Za-z]*}[^`]*`' a.js | sort -u | head -60
-          echo "== MAPA"; grep -o '.\{60\}\(geojson\|topojson\|shape\|mapa_\|getMapa\|geometria\)[^,]\{0,100\}' a.js | head -12
-          echo "== TRY"; B=https://ivs.ipea.gov.br/api/; for p in "udhbymunicipio?ibge=4113700&page=1&filter=" "ivs/udhbymunicipio?ibge=4113700&page=1&filter="; do echo "-- $p"; curl -s -m 60 "$B$p" | head -c 600; echo; done
+          echo "== DEFS2"; grep -o '\(Cr\|Or\|zo\|Fi\)\s*=\s*[^,;]\{0,80\}' a.js | head; grep -o 'findByCollection("[^"]*")' a.js | sort -u
+          T=c2b216ed24add91817de9eec008bc5
+          for c in base_dados_shapes base_dados; do echo "== COL $c"; curl -s -m 60 "https://ivs.ipea.gov.br/api/cockpit/api/collections/get/$c?token=$T" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          for e in d.get('entries',[]):
+              print({k:(str(v)[:160]) for k,v in e.items() if not k.startswith('_')})
+          " 2>&1 | head -40; done
