@@ -6,10 +6,10 @@ jobs:
     steps:
       - run: |
           set +e
-          echo "== GHSL"; curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/ | grep -o 'href="[^"]*"' | head -40
-          curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/ | grep -o 'href="[^"]*"' | head
-          curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/tiles/ | grep -o 'href="[^"]*"' | head -5
-          echo "== ATLAS"; curl -s -m 60 -L https://atlasdigital.mdr.gov.br/ | head -c 3000; echo
-          curl -s -m 60 -L https://atlasdigital.mdr.gov.br/ | grep -o 'src="[^"]*\.js[^"]*"' | head
-          echo "== IVS"; curl -s -m 60 -L https://ivs.ipea.gov.br/ | head -c 2000; echo
-          curl -s -m 60 -L https://ivs.ipea.gov.br/ | grep -o '\(src\|href\)="[^"]*"' | head -30
+          echo "== GHSLT"; curl -s -m 90 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/tiles/ | grep -o 'href="[^"]*"' | sed -n '5,12p'
+          curl -s -m 90 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/tiles/ | grep -o 'href="[^"]*"' | grep -c zip
+          curl -s -m 90 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/ | grep -o 'href="[^"]*"' | grep -i tile
+          echo "== ATLASP"; curl -s -m 60 -L https://atlasdigital.mdr.gov.br/ | grep -o "goTo('[^']*')" | sort -u
+          for p in download.xhtml downloads.xhtml dados.xhtml; do echo "-- $p $(curl -s -m 60 -o /dev/null -w '%{http_code}' -L https://atlasdigital.mdr.gov.br/paginas/$p)"; done
+          echo "== IVSAPI"; curl -s -m 60 https://ivs.ipea.gov.br/js/app.9c86c648.js | grep -o 'https\?://[a-zA-Z0-9./_-]*' | sort -u | head -40
+          curl -s -m 60 https://ivs.ipea.gov.br/js/app.9c86c648.js | grep -o '"/api[^"]*"\|baseURL:"[^"]*"\|udh[A-Za-z_/]*' | sort -u | head -40
