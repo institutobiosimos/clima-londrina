@@ -1,0 +1,35 @@
+{
+ "atualizado": "2026-11-12",
+ "exposicao": {
+  "pop_total": 555965,
+  "pop_calor_2": 371492,
+  "sens_calor_2": 93064,
+  "pop_calor_1": 442237,
+  "pop_alagamento": 16343,
+  "setores_prioridade_muito_alta": 164,
+  "pop_prioridade_muito_alta": 109974,
+  "media_urbana_superficie": 37.2
+ },
+ "area_construida_km2": {
+  "1985": 20.1,
+  "2000": 34.1,
+  "2025": 44.8
+ },
+ "ivs": null,
+ "desastres": {
+  "eventos": 15,
+  "desde": 2001,
+  "ate": 2025,
+  "prejuizo_total_rs": 392147180,
+  "prejuizo_agricola_rs": 3499748,
+  "afetados": 158503,
+  "desalojados_desabrigados": 370,
+  "casas_danificadas_destruidas": 1151
+ },
+ "fontes": [
+  "IBGE – Censo Demográfico 2022, agregados por setor censitário",
+  "GHSL/JRC – GHS-POP 2025 e GHS-BUILT-S (R2023A)",
+  "MIDR – Atlas Digital de Desastres no Brasil (1991–2025)",
+  "Ipea – Índice de Vulnerabilidade Social (IVS)"
+ ]
+}
