@@ -6,14 +6,17 @@ jobs:
     steps:
       - run: |
           set +e
-          pip install -q rasterio >/dev/null 2>&1
-          echo "== ATLASCSV"; curl -s -m 300 -o at.csv https://atlasdigital.mdr.gov.br/arquivos/2026/BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.csv; ls -la at.csv; file at.csv
-          head -c 1500 at.csv | iconv -f latin1 -t utf8; echo; grep -i "4113700\|londrina" at.csv | iconv -f latin1 -t utf8 | head -5 | cut -c1-900; echo; grep -ic "4113700" at.csv
-          echo "== GHSL"; B=https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/tiles
-          for t in R12_C13 R11_C13 R12_C14; do curl -s -m 300 -o $t.zip $B/GHS_POP_E2025_GLOBE_R2023A_4326_3ss_V1_0_$t.zip && unzip -o -q $t.zip -d $t && python3 -c "
-          import rasterio,glob; f=glob.glob('$t/*.tif')[0]; s=rasterio.open(f); print('$t', s.bounds, s.res)"; done
-          curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/ | grep -o 'href="GHS_BUILT[^"]*"'
-          echo "== IBGE"; curl -s -m 60 https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Agregados_por_Setores_Censitarios/ | grep -o 'href="[^"]*"' | head -30
-          curl -s -m 60 https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Agregados_por_Setores_Censitarios/Agregados_por_Setor_csv/ | grep -o 'href="[^"]*"' | head -30
-          curl -s -m 60 https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/setores/ | grep -o 'href="[^"]*"' | head
-          curl -s -m 60 https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/setores/shp/UF/ | grep -o 'href="PR[^"]*"' | head
+          pip install -q openpyxl pandas >/dev/null 2>&1
+          F=https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Agregados_por_Setores_Censitarios
+          echo "== MALHA"; curl -s -m 60 $F/malha_com_atributos/ | grep -o 'href="[^"]*"' | sed -n '6,20p'
+          curl -s -m 60 $F/malha_com_atributos/setores/ | grep -o 'href="[^"]*"' | sed -n '6,20p'
+          echo "== DIC"; curl -s -m 120 -o dic.xlsx $F/dicionario_de_dados_agregados_por_setores_censitarios_20260520.xlsx
+          python3 - <<'PY'
+          import pandas as pd
+          x = pd.read_excel('dic.xlsx', sheet_name=None, header=None)
+          for n, df in x.items():
+              print('### SHEET', n, df.shape)
+              s = df.astype(str).agg(' | '.join, axis=1)
+              for l in s[s.str.contains('V010|V0001|V0002|V0003|V0005|V0006|60 a|0 a 4|moradores|Rede geral|esgot|rendimento|Total de pessoas', case=False, regex=True)].head(40): print('  ', l[:230])
+          PY
+          echo "== BAIRRO"; curl -s -m 60 $F/Agregados_por_Bairro_csv/ | grep -o 'href="[^"]*"' | sed -n '6,25p'
