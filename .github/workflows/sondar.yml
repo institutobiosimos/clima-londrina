@@ -1,0 +1,15 @@
+name: Sondar fontes (temporário)
+on: { workflow_dispatch: {} }
+jobs:
+  s:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: |
+          set +e
+          echo "== GHSL"; curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/ | grep -o 'href="[^"]*"' | head -40
+          curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/ | grep -o 'href="[^"]*"' | head
+          curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/tiles/ | grep -o 'href="[^"]*"' | head -5
+          echo "== ATLAS"; curl -s -m 60 -L https://atlasdigital.mdr.gov.br/ | head -c 3000; echo
+          curl -s -m 60 -L https://atlasdigital.mdr.gov.br/ | grep -o 'src="[^"]*\.js[^"]*"' | head
+          echo "== IVS"; curl -s -m 60 -L https://ivs.ipea.gov.br/ | head -c 2000; echo
+          curl -s -m 60 -L https://ivs.ipea.gov.br/ | grep -o '\(src\|href\)="[^"]*"' | head -30
