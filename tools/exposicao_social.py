@@ -78,8 +78,10 @@ def ler_agregado(zip_url, variaveis):
     raw = z.read(nome)
     txt = raw.decode('utf-8-sig') if raw[:3] == b'\xef\xbb\xbf' or b'\xc3' in raw[:200000] else raw.decode('latin1')
     rd = csv.reader(io.StringIO(txt), delimiter=';'); cab = next(rd)
-    cab = [c.strip().strip('"') for c in cab]; i_set = cab.index('CD_SETOR')
-    idx = {v: cab.index(v) for v in variaveis if v in cab}
+    cab = [c.strip().strip('"').strip('\ufeff').upper() for c in cab]
+    log('cabeçalho', nome, cab[:8], len(cab))
+    i_set = next(i for i, c in enumerate(cab) if 'SETOR' in c)
+    idx = {v: cab.index(v.upper()) for v in variaveis if v.upper() in cab}
     log('agregado', nome, 'variáveis encontradas', list(idx))
     out = {}
     for lin in rd:
