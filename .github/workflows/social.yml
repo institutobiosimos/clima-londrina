@@ -1,0 +1,17 @@
+name: Pessoas expostas e desastres (IBGE, GHSL, Atlas de Desastres, IVS)
+on:
+  workflow_dispatch: {}
+  schedule: [{ cron: '23 9 15 1,7 *' }]   # semestral
+permissions: { contents: write }
+jobs:
+  social:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q rasterio shapely pyshp numpy pillow openpyxl
+      - run: python3 tools/exposicao_social.py
+      - run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/social; git commit -q -m "Pessoas expostas e desastres – atualização" || exit 0
+          git pull -q --rebase origin main; git push
