@@ -281,9 +281,12 @@ try:
         ii = next((i for i, c in enumerate(cab) if c == 'ivs'), None)
         ia = next((i for i, c in enumerate(cab) if c in ('ano', 'year')), None)
         if ic is None or ii is None: continue
-        regs = [l for l in linhas[1:] if str(l[ic]).split('.')[0] in (COD, COD[:6])
+        inome = cab.index('nome_municipio_uf') if 'nome_municipio_uf' in cab else None
+        amostra = [l for l in linhas[1:] if inome is not None and 'londrina' in str(l[inome]).lower()]
+        log('IVS amostra Londrina', len(amostra), [l[:20] for l in amostra[:4]])
+        regs = [l for l in linhas[1:] if (str(l[ic]).split('.')[0] in (COD, COD[:6]) or (inome is not None and str(l[inome]).strip().lower() in ('londrina (pr)', 'londrina - pr', 'londrina/pr')))
                 and (inv is None or l[inv] in (None, '', 0, '0'))
-                and all(str(l[i] or 'total').strip().lower() in ('total', 'none', '', 'todos') for i in rot)]
+                and all(str(l[i] if l[i] is not None else 'total').strip().lower() in ('total', 'none', '', 'todos', 'todas') for i in rot)]
         log('IVS linhas de Londrina', len(regs), [[l[i] for i in ([ia] if ia is not None else []) + rot] + [l[ii]] for l in regs][:8])
         regs = [l for l in regs if num(l[ii]) > 0]
         if regs:
