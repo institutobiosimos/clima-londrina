@@ -29,7 +29,7 @@ def baixar(url, nome=None):
     dest = os.path.join(TMP, nome or url.rsplit('/', 1)[-1])
     if not os.path.exists(dest):
         log('baixando', url)
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Instituto Biosimos – Clima Londrina)'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Instituto Biosimos - Clima Londrina)'})
         with urllib.request.urlopen(req, timeout=900) as r, open(dest + '.part', 'wb') as f:
             while True:
                 b = r.read(1 << 20)
