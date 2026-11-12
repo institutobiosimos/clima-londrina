@@ -6,10 +6,8 @@ jobs:
     steps:
       - run: |
           set +e
-          echo "== ATLASD"; curl -s -m 60 -L https://atlasdigital.mdr.gov.br/paginas/downloads.xhtml | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -c 2500; echo
-          curl -s -m 60 -L https://atlasdigital.mdr.gov.br/paginas/downloads.xhtml | grep -o '\(href\|onclick\|src\)="[^"]*"' | grep -v javax | sort -u | head -40
-          echo "== IVSJS"; curl -s -m 60 https://ivs.ipea.gov.br/js/app.9c86c648.js > a.js
-          grep -o '.\{120\}udhbymunicipio.\{160\}' a.js | head -3; echo
-          grep -o '.\{100\}ivs.ipea.gov.br/api.\{100\}' a.js | head -3; echo
-          grep -o 'get("[^"]*"\|get(`[^`]*`\|"[a-z_]*by[a-z_]*/' a.js | sort -u | head -40
-          grep -o '.\{80\}geojson.\{80\}\|.\{60\}shape.\{80\}' a.js | head -5
+          curl -s -m 60 https://ivs.ipea.gov.br/js/app.9c86c648.js > a.js
+          echo "== DEFS"; grep -o '\(const\|let\|,\)\s*\(xr\|Ar\|Go\|Hi\|Jo\)\s*=\s*[^,;]*' a.js | head
+          echo "== GETS"; grep -o 'get(`\${[A-Za-z]*}[^`]*`' a.js | sort -u | head -60
+          echo "== MAPA"; grep -o '.\{60\}\(geojson\|topojson\|shape\|mapa_\|getMapa\|geometria\)[^,]\{0,100\}' a.js | head -12
+          echo "== TRY"; B=https://ivs.ipea.gov.br/api/; for p in "udhbymunicipio?ibge=4113700&page=1&filter=" "ivs/udhbymunicipio?ibge=4113700&page=1&filter="; do echo "-- $p"; curl -s -m 60 "$B$p" | head -c 600; echo; done
