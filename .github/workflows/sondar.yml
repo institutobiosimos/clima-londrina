@@ -6,12 +6,14 @@ jobs:
     steps:
       - run: |
           set +e
-          curl -s -m 60 https://ivs.ipea.gov.br/js/app.9c86c648.js > a.js
-          echo "== DEFS2"; grep -o '\(Cr\|Or\|zo\|Fi\)\s*=\s*[^,;]\{0,80\}' a.js | head; grep -o 'findByCollection("[^"]*")' a.js | sort -u
-          T=c2b216ed24add91817de9eec008bc5
-          for c in base_dados_shapes base_dados; do echo "== COL $c"; curl -s -m 60 "https://ivs.ipea.gov.br/api/cockpit/api/collections/get/$c?token=$T" | python3 -c "
-          import json,sys
-          d=json.load(sys.stdin)
-          for e in d.get('entries',[]):
-              print({k:(str(v)[:160]) for k,v in e.items() if not k.startswith('_')})
-          " 2>&1 | head -40; done
+          pip install -q rasterio >/dev/null 2>&1
+          echo "== ATLASCSV"; curl -s -m 300 -o at.csv https://atlasdigital.mdr.gov.br/arquivos/2026/BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.csv; ls -la at.csv; file at.csv
+          head -c 1500 at.csv | iconv -f latin1 -t utf8; echo; grep -i "4113700\|londrina" at.csv | iconv -f latin1 -t utf8 | head -5 | cut -c1-900; echo; grep -ic "4113700" at.csv
+          echo "== GHSL"; B=https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_4326_3ss/V1-0/tiles
+          for t in R12_C13 R11_C13 R12_C14; do curl -s -m 300 -o $t.zip $B/GHS_POP_E2025_GLOBE_R2023A_4326_3ss_V1_0_$t.zip && unzip -o -q $t.zip -d $t && python3 -c "
+          import rasterio,glob; f=glob.glob('$t/*.tif')[0]; s=rasterio.open(f); print('$t', s.bounds, s.res)"; done
+          curl -s -m 60 https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/ | grep -o 'href="GHS_BUILT[^"]*"'
+          echo "== IBGE"; curl -s -m 60 https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Agregados_por_Setores_Censitarios/ | grep -o 'href="[^"]*"' | head -30
+          curl -s -m 60 https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Agregados_por_Setores_Censitarios/Agregados_por_Setor_csv/ | grep -o 'href="[^"]*"' | head -30
+          curl -s -m 60 https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/setores/ | grep -o 'href="[^"]*"' | head
+          curl -s -m 60 https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/setores/shp/UF/ | grep -o 'href="PR[^"]*"' | head
