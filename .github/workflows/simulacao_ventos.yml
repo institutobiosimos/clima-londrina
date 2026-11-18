@@ -1,0 +1,41 @@
+name: Vídeo simulação dos ventos
+on: { workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  video:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install -q playwright numpy
+          python -m playwright install chromium
+          curl -sL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz | tar -xJ -C /tmp
+          sudo cp /tmp/ffmpeg-master-latest-linux64-gpl/bin/ff* /usr/local/bin/
+      - run: |
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          sleep 2
+          python3 tools/video/simulacao_ventos.py http://localhost:8765 /tmp/sv
+      - run: |
+          set -e
+          mkdir -p /tmp/saida /tmp/partes
+          for d in /tmp/sv/*/; do n=$(basename "$d")
+            ffmpeg -y -loglevel error -framerate 30 -i "$d/%04d.jpg" -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p "/tmp/partes/$n.mp4"; done
+          cd /tmp/partes
+          D1=$(ffprobe -v error -show_entries format=duration -of csv=p=0 01_cidade.mp4); D2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 02_centro.mp4); D3=$(ffprobe -v error -show_entries format=duration -of csv=p=0 03_canal.mp4)
+          X=0.8
+          O1=$(python3 -c "print($D1-$X)"); O2=$(python3 -c "print($D1+$D2-2*$X)"); O3=$(python3 -c "print($D1+$D2+$D3-3*$X)")
+          ffmpeg -y -loglevel error -i 01_cidade.mp4 -i 02_centro.mp4 -i 03_canal.mp4 -i 04_fim.mp4 -filter_complex \
+            "[0][1]xfade=transition=fade:duration=$X:offset=$O1[a];[a][2]xfade=transition=fade:duration=$X:offset=$O2[b];[b][3]xfade=transition=fade:duration=$X:offset=$O3,format=yuv420p[v]" \
+            -map "[v]" -c:v libx264 -preset slow -crf 17 -movflags +faststart /tmp/saida/simulacao_ventos_sem_som.mp4
+          T=$(ffprobe -v error -show_entries format=duration -of csv=p=0 /tmp/saida/simulacao_ventos_sem_som.mp4)
+          python3 $GITHUB_WORKSPACE/tools/video/trilha.py $T /tmp/trilha.wav
+          ffmpeg -y -loglevel error -i /tmp/saida/simulacao_ventos_sem_som.mp4 -i /tmp/trilha.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k -af "afade=t=out:st=$(python3 -c "print($T-2.5)"):d=2.5" -shortest -movflags +faststart /tmp/saida/simulacao_ventos_com_trilha.mp4
+          ffmpeg -y -loglevel error -i /tmp/saida/simulacao_ventos_sem_som.mp4 -vf scale=1280:-2 -c:v libx264 -preset slow -crf 23 -an -movflags +faststart /tmp/saida/simulacao_ventos_leve_720p.mp4
+          for t in 4 15 25; do ffmpeg -y -loglevel error -ss $t -i /tmp/saida/simulacao_ventos_sem_som.mp4 -frames:v 1 -q:v 2 /tmp/saida/quadro_${t}s.jpg; done
+          ls -la /tmp/saida
+      - run: |
+          cd /tmp/saida
+          git init -q -b simulacao-ventos && git config user.name "github-actions[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "Simulação dos ventos"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" simulacao-ventos
