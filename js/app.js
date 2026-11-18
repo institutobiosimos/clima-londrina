@@ -109,6 +109,13 @@ function enquadrarPopup(p, m) {
     if (dx || dy) m.panBy([dx, dy], { duration: 350 });
 }
 
+// Fonte mostrada no mapa de forma agrupada; a lista completa (com as licenças exigidas) fica em "Sobre os dados"
+function fonteResumo(f) {
+    f = f || '';
+    if (/Biosimos/i.test(f) && /^(Índice|Modelo|Registros)/i.test(f)) return 'Metodologia Instituto Biosimos · fontes em “Sobre os dados”';
+    if (/Landsat|Copernicus|Sentinel|sat[ée]lite|GHSL|MapBiomas|Open Buildings|DEM|ERA5/i.test(f)) return 'Sensoriamento remoto · processamento Instituto Biosimos · fontes em “Sobre os dados”';
+    return 'Bases públicas oficiais · processamento Instituto Biosimos · fontes em “Sobre os dados”';
+}
 // ---------- quadro "Sobre os dados e termos de uso" ----------
 function renderTermos() {
     const t = dadosGerais.termos, el = document.getElementById('cardTermos');
@@ -118,6 +125,7 @@ function renderTermos() {
         ${t.texto ? `<p class="termos-texto">${esc(t.texto)}</p>` : ''}
         ${(t.avisos || []).length ? `<ul class="termos-lista">${t.avisos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
         ${(t.fontes || []).length ? `<h3>Fontes</h3><ul class="termos-fontes">${t.fontes.map(f => `<li>${f.link ? `<a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.nome)}</a>` : esc(f.nome)}${f.detalhe ? ` – ${esc(f.detalhe)}` : ''}</li>`).join('')}</ul>` : ''}
+        <p class="termos-direitos">© ${new Date().getFullYear()} Instituto Biosimos. Plataforma, índices, modelos e base processada protegidos pela Lei 9.609/1998 (software) e Lei 9.610/1998 (direitos autorais). Consulta livre; reprodução, cópia do sistema ou reuso da base processada só com autorização escrita do Instituto.</p>
         ${t.contato ? `<p class="termos-contato">Correções, dúvidas ou pedidos de retirada de informação: <a href="mailto:${esc(t.contato)}">${esc(t.contato)}</a></p>` : ''}
         ${t.site ? `<a class="btn btn-externo" href="${esc(t.site.url)}" target="_blank" rel="noopener">${esc(t.site.texto)} ↗</a>` : ''}`;
     if (typeof prepararCartoes === 'function') prepararCartoes();
@@ -175,7 +183,7 @@ async function mostrarLicenca(protocolo) {
     map.flyTo({ center: f.geometry.coordinates, zoom: 15 });
     const p = f.properties;
     map.once('moveend', () => new mapboxgl.Popup({ maxWidth: '320px' }).setLngLat(f.geometry.coordinates)
-        .setHTML(`<div class="popup"><h3>${esc(p.nome)}</h3><dl class="popup-dl">${camposDe(o, p).map(k => `<dt>${esc(k)}</dt><dd>${esc(p[k])}</dd>`).join('')}</dl><p class="popup-hint">Fonte: ${esc(o.fonte || '')}</p></div>`).addTo(map));
+        .setHTML(`<div class="popup"><h3>${esc(p.nome)}</h3><dl class="popup-dl">${camposDe(o, p).map(k => `<dt>${esc(k)}</dt><dd>${esc(p[k])}</dd>`).join('')}</dl><p class="popup-hint">${esc(fonteResumo(o.fonte))}</p></div>`).addTo(map));
     if (window.matchMedia('(max-width: 800px)').matches) document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -333,7 +341,7 @@ function renderOpcionais() {
     const el = document.getElementById('camadasOpcionais');
     if (!el) return;
     el.hidden = false;
-    const linha = (o, tipo, on) => `<button type="button" class="camada-row${on ? ' ativo' : ''}" data-tipo="${tipo}" data-id="${esc(o.id)}" aria-pressed="${on}" title="${esc(o.fonte ? 'Fonte: ' + o.fonte : '')}">
+    const linha = (o, tipo, on) => `<button type="button" class="camada-row${on ? ' ativo' : ''}" data-tipo="${tipo}" data-id="${esc(o.id)}" aria-pressed="${on}" title="${esc(o.fonte ? fonteResumo(o.fonte) : '')}">
         ${iconeCamada(o)}<span class="camada-nome">${esc(o.nome)}</span><span class="chave" aria-hidden="true"></span></button>`;
     const soltas = lista.filter(o => !o.grupo);
     const grupos = [...new Set(lista.filter(o => o.grupo).map(o => o.grupo))];
@@ -428,7 +436,7 @@ function popupOpcional(e, soPrioritarias) {
     new mapboxgl.Popup({ maxWidth: '300px' }).setLngLat(e.lngLat)
         .setHTML(`<div class="popup"><h3>${esc(p.nome || 'Sem nome')}</h3><dl class="popup-dl">${linhas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
             ${linkHtml(p)}${oc.link_fixo ? `<a class="btn btn-mini" href="${esc(oc.link_fixo)}" target="_blank" rel="noopener">${esc(oc.link_fixo_texto || 'Abrir ↗')}</a>` : ''}
-            <p class="popup-hint">Fonte: ${esc(oc.fonte || 'ANA – Base Hidrográfica Ottocodificada')}</p></div>`).addTo(map);
+            <p class="popup-hint">${esc(fonteResumo(oc.fonte || 'ANA'))}</p></div>`).addTo(map);
     return true;
 }
 
@@ -818,7 +826,7 @@ function renderLegenda() {
     opsAtivas.filter(o => !o.grupo && o.legenda_itens).forEach(o => itens.push(`<div class="lg-group">${esc(o.nome)}</div>` +
         o.legenda_itens.map(i => `<div class="lg-item lg-sub"><i class="lg-sq" style="background:${i.cor}"></i>${esc(i.rotulo)}</div>`).join('')));
     opsAtivas.filter(o => !o.grupo && !o.legenda_itens).forEach(o =>
-        itens.push(`<div class="lg-item" title="Fonte: ${esc(o.fonte || '')}"><i class="lg-line" style="border-color:${o.cor}"></i>${esc(o.nome)}</div>`));
+        itens.push(`<div class="lg-item" title="${esc(fonteResumo(o.fonte))}"><i class="lg-line" style="border-color:${o.cor}"></i>${esc(o.nome)}</div>`));
     fazendas.forEach(f => (f.pontos || []).forEach(p => {
         const conteudo = `<i class="lg-ring" style="border-color:${f.cor}"></i>${esc(p.nome)}`;
         itens.push(p.documento
@@ -851,7 +859,7 @@ function renderPrograma(pg) {
     const graficos = (pg.graficos || []).map(g => `
         <h3>${esc(g.titulo)}</h3>
         ${g.itens.map(i => `<div class="uso"><span>${esc(i.rotulo)}</span><span class="uso-bar"><i style="width:${i.pct}%"></i></span><strong>${fmt(i.pct, 1)}%</strong></div>`).join('')}
-        ${g.fonte ? `<small class="fonte">${esc(g.fonte)}</small>` : ''}`).join('');
+        ${g.fonte ? `<small class="fonte">${esc(fonteResumo(g.fonte))}</small>` : ''}`).join('');
     const etapas = (pg.etapas || []).map(e => `<li class="${e.classe || ''}"><strong>${esc(e.nome)}</strong> ${esc(e.texto)}</li>`).join('');
     card.innerHTML = `<h2>${esc(pg.titulo || 'O programa')}</h2>
         ${pg.texto ? `<p class="prog-txt">${esc(pg.texto)}</p>` : ''}
@@ -1217,7 +1225,7 @@ async function renderClima() {
     const k = (campo) => r[`${campo}_${ult - 9}_${ult}`];
     card.hidden = false;
     card.innerHTML = `<h2>O clima de Londrina está mudando</h2>
-        <p class="hint">Série ${r.periodo} · ${esc(r.fonte)}</p>
+        <p class="hint">Série ${r.periodo} · ${esc(fonteResumo(r.fonte))}</p>
         <div class="clima-kpis">
             <div><b>+${fmt(r.tendencia_temp_decada, 2)} °C</b><span>por década na temperatura média</span></div>
             <div><b>${fmt(r.dias32_1981_1990, 0)} → ${fmt(k('dias32'), 0)}</b><span>dias/ano com máxima ≥ 32 °C (1981–90 → ${ult - 9}–${String(ult).slice(2)})</span></div>
@@ -1297,7 +1305,7 @@ async function renderSocial() {
         <div class="soc-tipos">${tipos.map(([t, v]) => `<div><span>${esc(t)}</span><i style="width:${Math.round(100 * v.eventos / maxEv)}%"></i><b>${v.eventos}</b></div>`).join('')}</div>
         <details class="clima-top"><summary>Ocorrências com danos ou pessoas afetadas</summary><ol>${evs.map(x => `<li>${esc(x.data || x.ano)} – <b>${esc(x.tipo)}</b>${x.afetados ? ` · ${mil(x.afetados)} afetados` : ''}${x.total_rs ? ` · ${rs(x.total_rs)}` : ''}</li>`).join('')}</ol></details>
         ${r.ivs ? `<p class="hint">Índice de Vulnerabilidade Social de Londrina (Ipea, ${r.ivs.ano || ''}): <b>${fmt(r.ivs.valor, 3)}</b> – vulnerabilidade ${esc(r.ivs.faixa || '')}. A média da cidade esconde diferenças grandes entre bairros, por isso o mapa usa os setores do Censo 2022.</p>` : ''}
-        <p class="hint">Fontes: ${(r.fontes || []).map(esc).join(' · ')}. Os prejuízos são os declarados pelo município ao governo federal (S2iD) e podem subestimar as perdas reais. A população em áreas alagáveis é estimada a partir do modelo de terreno e da distribuição de moradores do GHSL.</p>`;
+        <p class="hint">Bases públicas oficiais · fontes em “Sobre os dados”. Os prejuízos são os declarados pelo município ao governo federal (S2iD) e podem subestimar as perdas reais. A população em áreas alagáveis é estimada a partir do modelo de terreno e da distribuição de moradores do GHSL.</p>`;
     card.querySelectorAll('.soc-bt').forEach(b => b.addEventListener('click', () => {
         for (const outra of [cfg.camada, cfg.camada_expansao]) {
             if (outra !== b.dataset.c && opcionaisAtivas.has(outra)) document.querySelector(`.camada-row[data-id="${outra}"]`)?.click();

@@ -579,3 +579,4 @@ table.ind tr.pos td { color: #1d6b3e; font-weight: 600; }
 .soc-tipos div { display: grid; grid-template-columns: 130px 1fr 24px; align-items: center; gap: 6px; margin: 3px 0; }
 .soc-tipos i { display: block; height: 8px; background: #5e35b1; border-radius: 4px; }
 .soc-tipos b { text-align: right; }
+.termos-direitos { font-size: .74rem; color: var(--texto-suave); border-top: 1px solid var(--borda); padding-top: 8px; margin-top: 10px; }
