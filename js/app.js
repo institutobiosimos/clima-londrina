@@ -111,6 +111,7 @@ function enquadrarPopup(p, m) {
 
 // Fonte mostrada no mapa de forma agrupada; a lista completa (com as licenças exigidas) fica em "Sobre os dados"
 function fonteResumo(f) {
+    if (window.CLIMA_DEMO) return 'Processamento Instituto Biosimos · fontes em “Sobre esta versão”';
     f = f || '';
     if (/Biosimos/i.test(f) && /^(Índice|Modelo|Registros)/i.test(f)) return 'Metodologia Instituto Biosimos · fontes em “Sobre os dados”';
     if (/Landsat|Copernicus|Sentinel|sat[ée]lite|GHSL|MapBiomas|Open Buildings|DEM|ERA5/i.test(f)) return 'Sensoriamento remoto · processamento Instituto Biosimos · fontes em “Sobre os dados”';
@@ -131,7 +132,7 @@ function aplicarDemo(d, cfg) {
         d.painel_vento.camadas = (d.painel_vento.camadas || []).filter(id => ok.has(id));
         d.painel_vento.aviso = 'Modelo indicativo do Instituto Biosimos. Não substitui medições locais.';
     }
-    if (d.programa) delete d.programa.etapas;
+    if (d.programa) { delete d.programa.etapas; if (cfg.textoProjeto) d.programa.texto = cfg.textoProjeto; }
     if (d.ranking_bairros) d.ranking_bairros.texto = 'Bairros mais quentes e mais frescos nos verões recentes, em relação à média da área urbana. Clique para ver o bairro.';
     d.cliente = { ...d.cliente, selo: cfg.selo || 'Versão demonstrativa' };
     d.termos = {
@@ -1252,7 +1253,7 @@ async function renderClima() {
     const resumido = !!(window.CLIMA_DEMO && window.CLIMA_DEMO.climaResumido);
     card.hidden = false;
     card.innerHTML = `<h2>O clima de Londrina está mudando</h2>
-        <p class="hint">Série ${r.periodo} · ${esc(fonteResumo(r.fonte))}</p>
+        <p class="hint">Série ${r.periodo}${resumido ? '' : ' · ' + esc(fonteResumo(r.fonte))}</p>
         <div class="clima-kpis">
             <div><b>+${fmt(r.tendencia_temp_decada, 2)} °C</b><span>por década na temperatura média</span></div>
             <div><b>${fmt(r.dias32_1981_1990, 0)} → ${fmt(k('dias32'), 0)}</b><span>dias/ano com máxima ≥ 32 °C (1981–90 → ${ult - 9}–${String(ult).slice(2)})</span></div>
@@ -1275,7 +1276,7 @@ async function renderClima() {
         <h3>Maior veranico da safra de verão (dias seguidos sem chuva)</h3>${svgSerie(s, 'veranico_max', { cor: '#a1887f', unidade: ' dias', altura: 100, tendencia: true })}
         <h3>Balanço hídrico anual (chuva − evapotranspiração, mm)</h3><p class="hint">Em vermelho, anos em que a evaporação potencial superou a chuva.</p>${svgSerie(s, 'balanco_hidrico', { cor: '#26a69a', unidade: ' mm', altura: 110, tendencia: true })}
         <h3>Chuvas erosivas (≥ 30 mm em um dia)</h3>${svgSerie(s, 'dias_chuva_30', { cor: '#6d4c41', unidade: ' dias', altura: 100, tendencia: true })}`}
-        <p class="hint">Linha tracejada = tendência. Reanálise climática (modelo + observações), com resolução de ~25 km: mostra a tendência regional; valores de estações locais podem diferir.</p>`;
+        <p class="hint">Linha tracejada = tendência.${resumido ? ' Tendência regional; valores de estações locais podem diferir.' : ' Reanálise climática (modelo + observações), com resolução de ~25 km: mostra a tendência regional; valores de estações locais podem diferir.'}</p>`;
 }
 async function renderRanking() {
     const card = document.getElementById('cardRanking'), cfg = dadosGerais.ranking_bairros;
