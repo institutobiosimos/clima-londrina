@@ -1,0 +1,32 @@
+name: Imagens e cenas para o site
+on: { workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  imagens:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install -q playwright
+          python -m playwright install chromium
+          curl -sL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz | tar -xJ -C /tmp
+          sudo cp /tmp/ffmpeg-master-latest-linux64-gpl/bin/ff* /usr/local/bin/
+      - run: |
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          sleep 2
+          python3 tools/video/imagens_site.py http://localhost:8765 /tmp/site
+      - run: |
+          mkdir -p /tmp/saida/imagens /tmp/saida/cenas
+          cp /tmp/site/imagens/*.png /tmp/saida/imagens/
+          for d in /tmp/site/cenas/*/; do n=$(basename "$d")
+            ffmpeg -y -loglevel error -framerate 30 -i "$d/%04d.jpg" -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p -movflags +faststart "/tmp/saida/cenas/$n.mp4"
+            ffmpeg -y -loglevel error -framerate 30 -i "$d/%04d.jpg" -vf scale=1280:-2 -c:v libx264 -preset slow -crf 23 -pix_fmt yuv420p -an -movflags +faststart "/tmp/saida/cenas/${n}_leve_720p.mp4"
+            cp "$d/0000.jpg" "/tmp/saida/cenas/${n}_capa.jpg"
+          done
+          ls -la /tmp/saida/*
+      - run: |
+          cd /tmp/saida
+          git init -q -b imagens-site && git config user.name "github-actions[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "Imagens e cenas para o site"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" imagens-site
