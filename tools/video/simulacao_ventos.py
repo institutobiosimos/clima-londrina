@@ -13,7 +13,8 @@ PRONTO = "() => typeof map !== 'undefined' && map.loaded() && typeof dadosGerais
 
 CSS = """
 .demo-marca, .demo-faixa, .demo-badge, #map-legend, .map-legend { display: none !important; }
-.mapboxgl-canvas { filter: brightness(.72) saturate(.85); }
+.sv-escuro { position: absolute; inset: 0; background: rgba(6,18,14,.30); pointer-events: none; z-index: 1; }
+.vento-canvas { z-index: 2; }
 #sv-cap { position: fixed; left: 56px; bottom: 70px; z-index: 99995; font-family: 'Segoe UI','Noto Sans',Arial,sans-serif; color: #fff; max-width: 820px; }
 #sv-cap h2 { margin: 0 0 8px; font-size: 52px; font-weight: 800; letter-spacing: .3px; text-shadow: 0 3px 14px rgba(0,0,0,.65); }
 #sv-cap p { margin: 0; font-size: 26px; line-height: 1.35; background: rgba(8,30,24,.62); border-left: 6px solid #8bc34a; padding: 10px 16px; border-radius: 0 10px 10px 0; display: inline-block; }
@@ -68,7 +69,7 @@ with sync_playwright() as p:
     pg.wait_for_function(PRONTO, timeout=90000)
     pg.add_script_tag(path=os.path.join(AQUI, 'apresentacao_overlay.js'))
     pg.add_style_tag(content=CSS)
-    pg.evaluate("() => { document.body.classList.add('v-cine'); map.resize(); }")
+    pg.evaluate("() => { document.body.classList.add('v-cine'); map.resize(); const e = document.createElement('div'); e.className = 'sv-escuro'; document.getElementById('map').appendChild(e); }")
     pg.evaluate(PASSO)
     pg.evaluate("""() => {
         const m = document.createElement('div'); m.id = 'sv-marca'; m.innerHTML = '<img src="logo.png" alt=""><span>Clima Londrina · Instituto Biosimos</span>'; document.body.appendChild(m);
@@ -106,6 +107,6 @@ with sync_playwright() as p:
                 pg.evaluate("o => { document.getElementById('sv-fim').style.opacity = o; document.getElementById('sv-marca').style.opacity = 1 - o; }", min(1, i / 30))
             op = max(0, min(1, (i - 10) / 20, (n - 1 - i) / 15))
             pg.evaluate("o => { document.getElementById('sv-cap').style.opacity = o; passoSite(); }", op)
-            pg.screenshot(path=f'{d}/{i:04d}.jpg', type='jpeg', quality=93)
+            pg.screenshot(path=f'{d}/{i:04d}.jpg', type='jpeg', quality=93, timeout=180000)
         print('trecho', nome, n, 'quadros', flush=True)
     b.close()
