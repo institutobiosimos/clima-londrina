@@ -1249,6 +1249,7 @@ async function renderClima() {
     let d; try { d = await (await fetch(dadosGerais.painel_clima, { cache: 'no-cache' })).json(); } catch { return; }
     const r = d.resumo, s = d.serie, ult = s[s.length - 1].ano, ini = s[0].ano;
     const k = (campo) => r[`${campo}_${ult - 9}_${ult}`];
+    const resumido = !!(window.CLIMA_DEMO && window.CLIMA_DEMO.climaResumido);
     card.hidden = false;
     card.innerHTML = `<h2>O clima de Londrina está mudando</h2>
         <p class="hint">Série ${r.periodo} · ${esc(fonteResumo(r.fonte))}</p>
@@ -1259,11 +1260,11 @@ async function renderClima() {
         </div>
         <h3>Temperatura média anual (°C)</h3>${svgSerie(s, 'temp_media', { tipo: 'linha', cor: '#d84315', unidade: ' °C', tendencia: true })}
         <h3>Dias de calor (máxima ≥ 32 °C)</h3>${svgSerie(s, 'dias_32', { cor: '#ef6c00', unidade: ' dias', tendencia: true })}
-        <h3>Dias de chuva forte (≥ 50 mm)</h3>${svgSerie(s, 'dias_chuva_50', { cor: '#0277bd', unidade: ' dias', altura: 100 })}
+        ${resumido ? '' : `        <h3>Dias de chuva forte (≥ 50 mm)</h3>${svgSerie(s, 'dias_chuva_50', { cor: '#0277bd', unidade: ' dias', altura: 100 })}
         <h3>Dias com rajadas ≥ 60 km/h</h3>${svgSerie(s, 'dias_rajada_60', { cor: '#5e35b1', unidade: ' dias', altura: 100 })}
         <h3>De onde vem o vento (${esc(d.rosa_ventos.periodo)})</h3>${svgRosa(d.rosa_ventos)}
-        <details class="clima-top"><summary>Maiores chuvas em um dia (${ini}–${ult})</summary><ol>${d.maiores_chuvas.map(c => `<li>${c.data.split('-').reverse().join('/')} – <b>${fmt(c.mm, 1)} mm</b></li>`).join('')}</ol></details>
-        ${s[0].geadas !== undefined ? `<h2 class="clima-campo">E no campo?</h2>
+        <details class="clima-top"><summary>Maiores chuvas em um dia (${ini}–${ult})</summary><ol>${d.maiores_chuvas.map(c => `<li>${c.data.split('-').reverse().join('/')} – <b>${fmt(c.mm, 1)} mm</b></li>`).join('')}</ol></details>`}
+        ${resumido || s[0].geadas === undefined ? '' : `<h2 class="clima-campo">E no campo?</h2>
         <p class="hint">Indicadores agroclimáticos para a zona rural de Londrina (mesma série).</p>
         <div class="clima-kpis">
             <div><b>${fmt(r.geadas_1981_1990, 1)} → ${fmt(k('geadas'), 1)}</b><span>dias/ano com risco de geada (mínima ≤ 3 °C)</span></div>
@@ -1273,7 +1274,7 @@ async function renderClima() {
         <h3>Dias com risco de geada (mínima ≤ 3 °C)</h3>${svgSerie(s, 'geadas', { cor: '#4fc3f7', unidade: ' dias', altura: 100, tendencia: true })}
         <h3>Maior veranico da safra de verão (dias seguidos sem chuva)</h3>${svgSerie(s, 'veranico_max', { cor: '#a1887f', unidade: ' dias', altura: 100, tendencia: true })}
         <h3>Balanço hídrico anual (chuva − evapotranspiração, mm)</h3><p class="hint">Em vermelho, anos em que a evaporação potencial superou a chuva.</p>${svgSerie(s, 'balanco_hidrico', { cor: '#26a69a', unidade: ' mm', altura: 110, tendencia: true })}
-        <h3>Chuvas erosivas (≥ 30 mm em um dia)</h3>${svgSerie(s, 'dias_chuva_30', { cor: '#6d4c41', unidade: ' dias', altura: 100, tendencia: true })}` : ''}
+        <h3>Chuvas erosivas (≥ 30 mm em um dia)</h3>${svgSerie(s, 'dias_chuva_30', { cor: '#6d4c41', unidade: ' dias', altura: 100, tendencia: true })}`}
         <p class="hint">Linha tracejada = tendência. Reanálise climática (modelo + observações), com resolução de ~25 km: mostra a tendência regional; valores de estações locais podem diferir.</p>`;
 }
 async function renderRanking() {
@@ -1285,7 +1286,7 @@ async function renderRanking() {
         <span class="rk-v ${quente ? 'q' : 'f'}">${fmt(f.properties[campo], 1)} °C <small>(${f.properties[dif] > 0 ? '+' : ''}${fmt(f.properties[dif], 1)})</small></span></button></li>`;
     card.hidden = false;
     card.innerHTML = `<h2>${esc(cfg.titulo)}</h2><p class="hint">${esc(cfg.texto)}</p>
-        <h3>Mais quentes</h3><ol class="ranking">${fs.slice(0, 10).map((f, i) => item(f, i, true)).join('')}</ol>
+        <h3>Mais quentes</h3><ol class="ranking">${fs.slice(0, (window.CLIMA_DEMO && window.CLIMA_DEMO.rankingN) || 10).map((f, i) => item(f, i, true)).join('')}</ol>
         <h3>Mais frescos</h3><ol class="ranking" start="${fs.length - 4}">${fs.slice(-5).map((f, i) => item(f, fs.length - 5 + i, false)).join('')}</ol>`;
     card.querySelectorAll('.rk').forEach(b => b.addEventListener('click', () => {
         const f = fs[+b.dataset.i];
@@ -1432,7 +1433,8 @@ async function renderVento() {
     if (!card || !cfg) return;
     let c, b, r; try { [c, b, r] = await Promise.all([cfg.corredores, cfg.barreiras, cfg.resumo].map(async u => (await fetch(u, { cache: 'no-cache' })).json())); } catch { return; }
     const NOME = { N: 'norte', NE: 'nordeste', L: 'leste', SE: 'sudeste', S: 'sul', SO: 'sudoeste', O: 'oeste', NO: 'noroeste' };
-    const canais = c.features.filter(f => f.properties.Tipo.startsWith('Canal')).slice(0, 8), bars = b.features.slice(0, 6);
+    const nDemo = window.CLIMA_DEMO && window.CLIMA_DEMO.ventoN;
+    const canais = c.features.filter(f => f.properties.Tipo.startsWith('Canal')).slice(0, nDemo || 8), bars = b.features.slice(0, nDemo ? Math.max(3, nDemo - 2) : 6);
     const item = (f, i, grupo, cor) => `<li><button type="button" class="rk" data-g="${grupo}" data-i="${i}"><span class="rk-n">${esc(f.properties.Nome)}</span>
         <span class="rk-v" style="color:${cor}">${esc(f.properties.Bairros ? f.properties.Bairros.split(', ').slice(0, 2).join(', ') : f.properties['Área (ha)'] + ' ha')}</span></button></li>`;
     card.hidden = false;

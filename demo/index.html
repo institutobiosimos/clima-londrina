@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clima Londrina – Versão demonstrativa</title>
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css">
-    <link rel="stylesheet" href="css/style.css?v=20261118d">
+    <link rel="stylesheet" href="css/style.css?v=20261118e">
     <style>
         /* versão demonstrativa: tela enxuta */
         .segmented[aria-label="Estilo do mapa"], .opc-titulo, #cardPrazos, #cardLicencas, #verTodosPrazos { display: none !important; }
@@ -136,18 +136,20 @@
     <script>
         window.CLIMA_DEMO = {
             selo: 'Versão demonstrativa',
-            camadas: ['calor', 'bairros-calor', 'vegetacao', 'alagamento', 'rios', 'vento-canais', 'vento-barreiras', 'vento-direcoes', 'bairros', 'regioes'],
+            camadas: ['calor', 'bairros-calor', 'vento-ventilacao', 'vento-canais', 'vento-barreiras', 'vento-direcoes'],
             paineis: [],
+            climaResumido: true,
+            rankingN: 5,
+            ventoN: 5,
             nomes: {
-                'calor': 'Ilhas de calor', 'bairros-calor': 'Ranking de calor por bairro', 'vegetacao': 'Cobertura vegetal',
-                'alagamento': 'Áreas sujeitas a alagamento', 'rios': 'Rios principais', 'vento-canais': 'Canais de ventilação',
-                'vento-barreiras': 'Áreas de ar parado', 'vento-direcoes': 'Direção dos ventos', 'bairros': 'Bairros', 'regioes': 'Regiões'
+                'calor': 'Ilhas de calor', 'bairros-calor': 'Calor por bairro', 'vento-ventilacao': 'Ventilação da cidade',
+                'vento-canais': 'Canais de ventilação', 'vento-barreiras': 'Áreas de ar parado', 'vento-direcoes': 'Direção dos ventos'
             },
             campos: { 'bairros-calor': ['Ranking de calor', 'Diferença para a média urbana (°C)'] },
-            fontes: ['Copernicus (União Europeia)', 'NASA/USGS', 'Agência Nacional de Águas e Saneamento Básico (ANA)', 'Prefeitura de Londrina (IPPUL) – bairros e regiões'],
+            fontes: ['NASA', 'Agência Nacional de Águas e Saneamento Básico (ANA)', 'Prefeitura de Londrina'],
             contato: 'contato@institutobiosimos.org.br'
         };
     </script>
-    <script src="js/app.js?v=20261118d"></script>
+    <script src="js/app.js?v=20261118e"></script>
 </body>
 </html>
