@@ -13,11 +13,16 @@ CIDADE = [-51.165, -23.315]
 PRONTO = "() => typeof map !== 'undefined' && map.loaded() && typeof dadosGerais !== 'undefined' && dadosGerais && document.querySelector('.camada-row[data-id=\"calor\"]')"
 
 
-def abrir(ctx, pagina='index.html', cine=True):
+LIMPO = '.demo-marca, .demo-faixa, .demo-badge, #clienteSub, .footnote, #cardTermos, #cardPrograma { display: none !important; }'
+
+
+def abrir(ctx, pagina='demo/index.html', cine=True):
+    # sempre a versão demonstrativa (textos resumidos, sem detalhes de fontes e métodos), sem marca d'água
     pg = ctx.new_page()
     pg.goto(f'{BASE}/{pagina}')
     pg.wait_for_function(PRONTO, timeout=90000)
     pg.add_script_tag(path=os.path.join(AQUI, 'apresentacao_overlay.js'))
+    pg.add_style_tag(content=LIMPO)
     if cine:
         pg.evaluate("() => { document.body.classList.add('v-cine'); map.resize(); }")
     pg.wait_for_timeout(1500)
