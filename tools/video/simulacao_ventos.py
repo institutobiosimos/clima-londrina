@@ -26,7 +26,7 @@ CSS = """
 """
 
 # partículas mais visíveis: rastro longo e cor clara, por quão bem o ar circula
-PASSO = """
+PASSO = """() => {
 window.passoSite = () => {
   const cv = ventoAnim.canvas, ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
   ctx.globalCompositeOperation = 'destination-in'; ctx.fillStyle = 'rgba(0,0,0,0.955)'; ctx.fillRect(0, 0, cv.width, cv.height);
@@ -46,6 +46,7 @@ window.passoSite = () => {
     ctx.beginPath(); ctx.moveTo(a.x * dpr, a.y * dpr); ctx.lineTo(b.x * dpr, b.y * dpr); ctx.stroke();
   }
 };
+}
 """
 
 TRECHOS = [
