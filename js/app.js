@@ -116,6 +116,32 @@ function fonteResumo(f) {
     if (/Landsat|Copernicus|Sentinel|sat[ée]lite|GHSL|MapBiomas|Open Buildings|DEM|ERA5/i.test(f)) return 'Sensoriamento remoto · processamento Instituto Biosimos · fontes em “Sobre os dados”';
     return 'Bases públicas oficiais · processamento Instituto Biosimos · fontes em “Sobre os dados”';
 }
+// ---------- versão demonstrativa (demo/index.html define window.CLIMA_DEMO) ----------
+// Mostra só as camadas da lista, esconde painéis avançados e resume fontes e avisos.
+function aplicarDemo(d, cfg) {
+    const ok = new Set(cfg.camadas || []);
+    d.camadas_opcionais = (d.camadas_opcionais || []).filter(o => ok.has(o.id));
+    for (const o of d.camadas_opcionais) {
+        if (cfg.nomes && cfg.nomes[o.id]) o.nome = cfg.nomes[o.id];
+        if (cfg.campos && cfg.campos[o.id]) o.campos = cfg.campos[o.id];
+    }
+    for (const p of ['painel_rural', 'painel_zarc', 'painel_ar', 'painel_social', 'impactos', 'busca_camada'])
+        if (!(cfg.paineis || []).includes(p)) delete d[p];
+    if (d.painel_vento) {
+        d.painel_vento.camadas = (d.painel_vento.camadas || []).filter(id => ok.has(id));
+        d.painel_vento.aviso = 'Modelo indicativo do Instituto Biosimos. Não substitui medições locais.';
+    }
+    if (d.programa) delete d.programa.etapas;
+    if (d.ranking_bairros) d.ranking_bairros.texto = 'Bairros mais quentes e mais frescos nos verões recentes, em relação à média da área urbana. Clique para ver o bairro.';
+    d.cliente = { ...d.cliente, selo: cfg.selo || 'Versão demonstrativa' };
+    d.termos = {
+        titulo: 'Sobre esta versão',
+        texto: cfg.texto || 'Versão demonstrativa da plataforma Clima Londrina, com parte das camadas. Informações de caráter técnico, informativo e preliminar, a partir de dados públicos processados por metodologia própria. Não substituem os alertas da Defesa Civil, o mapeamento oficial de áreas de risco nem laudos com responsável técnico. Em emergência, ligue 199 (Defesa Civil) ou 193 (Corpo de Bombeiros).',
+        fontes: (cfg.fontes || []).map(nome => ({ nome })),
+        contato: cfg.contato || (d.termos && d.termos.contato) || 'contato@institutobiosimos.org.br'
+    };
+}
+
 // ---------- quadro "Sobre os dados e termos de uso" ----------
 function renderTermos() {
     const t = dadosGerais.termos, el = document.getElementById('cardTermos');
@@ -1582,6 +1608,7 @@ function renderImpactos() {
 async function iniciar() {
     const resp = await fetch('data/fazendas.json', { cache: 'no-cache' });
     const dados = await resp.json();
+    if (window.CLIMA_DEMO) aplicarDemo(dados, window.CLIMA_DEMO);
     const cliente = dados.cliente || {};
     document.getElementById('clienteNome').textContent = cliente.nome || 'Mapa interativo';
     document.getElementById('clienteSub').textContent = cliente.subtitulo || '';
