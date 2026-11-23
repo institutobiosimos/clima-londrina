@@ -580,3 +580,12 @@ table.ind tr.pos td { color: #1d6b3e; font-weight: 600; }
 .soc-tipos i { display: block; height: 8px; background: #5e35b1; border-radius: 4px; }
 .soc-tipos b { text-align: right; }
 .termos-direitos { font-size: .74rem; color: var(--texto-suave); border-top: 1px solid var(--borda); padding-top: 8px; margin-top: 10px; }
+
+/* radar de chuva ao vivo */
+#radarPainel { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 10px;
+  background: rgba(13, 32, 26, .86); color: #fff; padding: 8px 14px 8px 8px; border-radius: 999px; font: 600 13px/1.2 system-ui, Arial, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+#radarPainel button { width: 34px; height: 34px; border-radius: 50%; border: 0; background: #1e88e5; color: #fff; font-size: 13px; cursor: pointer; }
+#radarPainel b { color: #8fd3fe; } #radarPainel span { opacity: .95; margin-left: 4px; }
+#radarPainel i { display: block; height: 4px; background: rgba(255,255,255,.22); border-radius: 4px; margin-top: 5px; width: 190px; overflow: hidden; }
+#radarPainel em { display: block; height: 100%; background: #8fd3fe; transition: width .3s; }
+@media (max-width: 600px) { #radarPainel { bottom: 64px; font-size: 12px; } #radarPainel i { width: 130px; } }

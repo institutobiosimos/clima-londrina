@@ -260,6 +260,7 @@ function lerCSV(txt) {
     return linhas.filter(l => l.some(x => x.trim())).map(l => Object.fromEntries(cab.map((h, i) => [h, (l[i] || '').trim()])));
 }
 async function carregarOpcional(o) {
+    if (o.tipo === 'radar') return { radar: true };
     const fc = o.arquivo ? await (await fetch(o.arquivo, { cache: 'no-cache' })).json() : { type: 'FeatureCollection', features: [] };
     if (o.planilha_csv) {
         try {
@@ -281,6 +282,7 @@ function desenharOpcional(o) {
     // mapa ainda carregando (satélite/dados): desenha assim que terminar
     if (!map.isStyleLoaded()) { map.once('idle', () => { if (opcionaisAtivas.has(o.id)) { desenharOpcional(o); aplicarVisibilidadeCamadas(); } }); return; }
     const antes = (o.antes && map.getLayer(o.antes)) ? o.antes : antesDasFazendas();
+    if (o.tipo === 'radar') { if (typeof radarDesenhar === 'function' && !map.getSource(`op-${o.id}-0`)) radarDesenhar(o, antes).catch(err => console.error('Radar indisponível', err)); return; }
     if (o.geometria === 'ponto') {
         map.addSource(`op-${o.id}`, { type: 'geojson', data: g });
         const cor = o.cor_por && o.cores ? ['match', ['get', o.cor_por], ...Object.entries(o.cores).flat(), o.cor || '#777777'] : o.cor;
@@ -344,6 +346,7 @@ function desenharOpcional(o) {
     } catch (err) { console.warn('Rótulos indisponíveis', err); }
 }
 function removerOpcional(o) {
+    if (o.tipo === 'radar') { if (typeof radarRemover === 'function') radarRemover(); return; }
     [`op-${o.id}-nome`, `op-${o.id}`, `op-${o.id}-halo`, `op-${o.id}-fill`, `op-${o.id}-hit`].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
     [`op-${o.id}-pts`, `op-${o.id}`].forEach(id => { if (map.getSource(id)) map.removeSource(id); });
 }
@@ -1611,6 +1614,7 @@ function renderImpactos() {
 async function iniciar() {
     const resp = await fetch('data/fazendas.json', { cache: 'no-cache' });
     const dados = await resp.json();
+    if (typeof radarAdicionar === 'function') radarAdicionar(dados);
     if (window.CLIMA_DEMO) aplicarDemo(dados, window.CLIMA_DEMO);
     const cliente = dados.cliente || {};
     document.getElementById('clienteNome').textContent = cliente.nome || 'Mapa interativo';
